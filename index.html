@@ -545,6 +545,8 @@
     </div>
     <button class="btn btn-gold" onclick="exportCSV()">↓ CSV</button>
     <button class="btn btn-gold" onclick="exportPDF()">↓ PDF</button>
+    <button class="btn" onclick="saveInputs()" id="saveBtn">⬆ Save Inputs</button>
+    <button class="btn" onclick="restoreInputs()" id="restoreBtn" style="display:none">↺ Restore Saved</button>
   </div>
 </header>
 
@@ -559,9 +561,10 @@
       <div class="input-row">
         <div class="input-label">
           <span>Current Revenue</span>
+          <span class="input-value" id="rev-formatted"></span>
         </div>
         <input type="number" id="revenue" min="0" max="100000000" step="100000" value="8000000"
-          oninput="calculate()">
+          oninput="updateRevFormatted(); calculate()">
       </div>
 
       <div class="input-row">
@@ -998,7 +1001,50 @@ let charts = {};
 function init() {
   populateStateSelects();
   fetchGSPrice();
+  updateRevFormatted();
+  checkSavedInputs();
   calculate();
+}
+
+// =============================================
+// SAVE / RESTORE INPUTS
+// =============================================
+const INPUT_IDS = ['revenue','tenure','yearsRemaining','workGrowth','retGrowth','gsPrice','stockGrowth','workState','retState','altState','currentYearDelivery','exist1year','exist1shares','exist2year','exist2shares','exist3year','exist3shares'];
+
+function saveInputs() {
+  const saved = {};
+  INPUT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) saved[id] = el.value;
+  });
+  saved._postTax = postTax;
+  localStorage.setItem('pwm_saved_inputs', JSON.stringify(saved));
+  // Update button states
+  document.getElementById('saveBtn').textContent = '✓ Saved';
+  document.getElementById('restoreBtn').style.display = 'inline-flex';
+  setTimeout(() => { document.getElementById('saveBtn').textContent = '⬆ Save Inputs'; }, 2000);
+}
+
+function restoreInputs() {
+  const raw = localStorage.getItem('pwm_saved_inputs');
+  if (!raw) return;
+  const saved = JSON.parse(raw);
+  INPUT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && saved[id] !== undefined) el.value = saved[id];
+  });
+  if (saved._postTax !== undefined && saved._postTax !== postTax) toggleTax();
+  updateRevFormatted();
+  updateWGrowth();
+  updateRGrowth();
+  updateSGrowth();
+  calculate();
+}
+
+function checkSavedInputs() {
+  if (localStorage.getItem('pwm_saved_inputs')) {
+    document.getElementById('restoreBtn').style.display = 'inline-flex';
+  }
 }
 
 function populateStateSelects() {
@@ -1052,6 +1098,10 @@ function updatePriceStatus() {
 // DISPLAY UPDATES
 // =============================================
 function updateRevDisplay() {} // no-op, kept for safety
+function updateRevFormatted() {
+  const val = +document.getElementById('revenue').value;
+  document.getElementById('rev-formatted').textContent = val ? '$' + val.toLocaleString('en-US') : '';
+}
 function updateTenureDisplay() {
   const t = +document.getElementById('tenure').value;
   const yr = +document.getElementById('yearsRemaining').value;
@@ -1161,6 +1211,7 @@ function calculate() {
   ].filter(p => p.year >= BASE_YEAR && p.grossShares > 0);
 
   updateTenureDisplay();
+  updateRevFormatted();
 
   const retirementCalYear = BASE_YEAR + yrsRemaining;
 
