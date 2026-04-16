@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PWM Retirement Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c22;
+    --surface3: #1e232b;
+    --border: #252b35;
+    --border2: #2e3540;
+    --gold: #c9a84c;
+    --gold-dim: #8a6f32;
+    --gold-bright: #e8c870;
+    --text: #e8eaed;
+    --text-dim: #8a919e;
+    --text-muted: #4a5260;
+    --green: #3ddc97;
+    --green-dim: #1a6644;
+    --blue: #4a9eff;
+    --blue-dim: #1a3a6e;
+    --red: #ff6b6b;
+    --red-dim: #6e1a1a;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+  }
+  .logo span { color: var(--text-dim); font-weight: 300; }
+  .header-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  /* TAX TOGGLE */
+  .tax-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .toggle-track {
+    width: 40px; height: 20px;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-track.active { background: var(--gold-dim); border-color: var(--gold); }
+  .toggle-thumb {
+    width: 14px; height: 14px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    position: absolute;
+    top: 2px; left: 3px;
+    transition: left 0.2s, background 0.2s;
+  }
+  .toggle-track.active .toggle-thumb { left: 22px; background: var(--gold); }
+  .toggle-label { color: var(--text-dim); }
+  .toggle-label.active-label { color: var(--gold); }
+
+  /* EXPORT BUTTONS */
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text-dim);
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+  .btn-gold {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+    background: rgba(201,168,76,0.06);
+  }
+  .btn-gold:hover { background: rgba(201,168,76,0.12); }
+
+  /* LAYOUT */
+  .app { display: flex; height: calc(100vh - 60px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 300px;
+    min-width: 300px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .sidebar-section {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .sidebar-section:last-child { border-bottom: none; }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+    padding-top: 4px;
+  }
+
+  /* INPUTS */
+  .input-row {
+    margin-bottom: 12px;
+  }
+  .input-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .input-value {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--gold);
+  }
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border2);
+    border-radius: 1px;
+    outline: none;
+    margin: 6px 0 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(201,168,76,0.4);
+  }
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="number"]:focus,
+  input[type="text"]:focus,
+  select:focus { border-color: var(--gold-dim); }
+  select option { background: var(--surface2); }
+
+  .gs-price-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .gs-price-row input { flex: 1; }
+  .price-status {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .price-status.live { background: rgba(61,220,151,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .price-status.manual { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid var(--gold-dim); }
+
+  /* MAIN CONTENT */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 32px;
+    background: var(--bg);
+  }
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .tab {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text-dim); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold-dim), transparent);
+  }
+  .kpi-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .kpi-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .kpi-card.green::before { background: linear-gradient(90deg, var(--green-dim), transparent); }
+  .kpi-card.green .kpi-value { color: var(--green); }
+  .kpi-card.blue::before { background: linear-gradient(90deg, var(--blue-dim), transparent); }
+  .kpi-card.blue .kpi-value { color: var(--blue); }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+    margin-top: 8px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .section-divider {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* TABLES */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow-x: auto;
+    margin-bottom: 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+  }
+  th {
+    padding: 10px 14px;
+    text-align: right;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    font-size: 9px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  th:first-child { text-align: left; }
+  td {
+    padding: 9px 14px;
+    text-align: right;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td:first-child { text-align: left; color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr.retirement-row { background: rgba(61,220,151,0.03); }
+  tr.retirement-row td:first-child { color: var(--green); }
+  tr.total-row {
+    background: var(--surface2);
+    border-top: 1px solid var(--border2);
+  }
+  tr.total-row td { color: var(--gold); font-weight: 500; }
+  tr.cliff-row { background: rgba(255,107,107,0.05); }
+  tr.cliff-row td { color: var(--red); }
+  .positive { color: var(--green) !important; }
+  .negative { color: var(--red) !important; }
+  .gold { color: var(--gold) !important; }
+  .dim { color: var(--text-muted) !important; }
+
+  /* CHARTS */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .chart-grid.single { grid-template-columns: 1fr; }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 20px;
+  }
+  .chart-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .chart-container { position: relative; height: 220px; }
+
+  /* FLAG */
+  .flag {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .flag.warning {
+    background: rgba(201,168,76,0.08);
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+  }
+  .flag.info {
+    background: rgba(74,158,255,0.08);
+    border: 1px solid var(--blue-dim);
+    color: var(--blue);
+  }
+  .flag-icon { font-size: 13px; margin-top: 1px; }
+
+  /* SENSITIVITY GRID */
+  .sens-grid { overflow-x: auto; margin-bottom: 24px; }
+  .sens-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
+  .sens-table th {
+    background: var(--surface2);
+    padding: 8px 14px;
+    color: var(--text-muted);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .sens-table td {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .sens-table td.row-header { background: var(--surface2); color: var(--text-muted); font-size: 10px; }
+  .sens-high { background: rgba(61,220,151,0.08); color: var(--green) !important; }
+  .sens-mid { background: rgba(201,168,76,0.06); color: var(--gold) !important; }
+  .sens-low { background: rgba(255,107,107,0.06); color: var(--red) !important; }
+
+  /* PAYOUT BADGE */
+  .payout-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid var(--gold-dim);
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--gold);
+    margin-left: 8px;
+  }
+
+  /* MULTIPLE DISPLAY */
+  .multiple-display {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .multiple-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 18px;
+    border-radius: 3px;
+    flex: 1;
+    text-align: center;
+  }
+  .multiple-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .multiple-value {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .multiple-value.max { color: var(--green); }
+
+  /* SCROLLBAR */
+  .main::-webkit-scrollbar { width: 4px; }
+
+  /* RESPONSIVE NOTE */
+  @media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border: 1px solid var(--border2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">PWM <span>Retirement Planner</span></div>
+    <div class="header-tag">Goldman Sachs · 2026</div>
+  </div>
+  <div class="header-right">
+    <div class="tax-toggle">
+      <span class="toggle-label" id="pretax-label">PRE-TAX</span>
+      <div class="toggle-track" id="taxToggle" onclick="toggleTax()">
+        <div class="toggle-thumb"></div>
+      </div>
+      <span class="toggle-label active-label" id="posttax-label" style="color:var(--gold)">POST-TAX</span>
+    </div>
+    <button class="btn btn-gold" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn btn-gold" onclick="exportPDF()">↓ PDF</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="section-label">Business Inputs</div>
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>Current Revenue</span>
+        </div>
+        <input type="number" id="revenue" min="0" max="100000000" step="100000" value="8000000"
+          oninput="calculate()">
+      </div>
+
+      <div class="input-row">
+        <div class="input-label"><span>Current Tenure (years)</span></div>
+        <input type="number" id="tenure" min="15" max="40" step="1" value="15"
+          oninput="calculate()">
+      </div>
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>Years Until Retirement</span>
+        </div>
+        <input type="number" id="yearsRemaining" min="1" max="20" step="1" value="5"
+          oninput="calculate()">
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px" id="tenure-at-ret-display"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Growth Assumptions</div>
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>Working Phase Rev Growth</span>
+          <span class="input-value" id="wgrowth-display">5.0%</span>
+        </div>
+        <input type="range" id="workGrowth" min="-10" max="20" step="0.5" value="5"
+          oninput="updateWGrowth(); calculate()">
+      </div>
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>Retirement Benefit Growth</span>
+          <span class="input-value" id="rgrowth-display">2.0%</span>
+        </div>
+        <input type="range" id="retGrowth" min="-10" max="10" step="0.5" value="2"
+          oninput="updateRGrowth(); calculate()">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">GS Stock</div>
+
+      <div class="input-row">
+        <div class="input-label"><span>GS Share Price</span></div>
+        <div class="gs-price-row">
+          <input type="number" id="gsPrice" value="" placeholder="Fetching…" step="0.01"
+            oninput="gsPriceManual = true; updatePriceStatus(); calculate()">
+          <span class="price-status manual" id="priceStatus">MANUAL</span>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-label">
+          <span>Annual Stock Growth Rate</span>
+          <span class="input-value" id="sgrowth-display">7.0%</span>
+        </div>
+        <input type="range" id="stockGrowth" min="-10" max="30" step="0.5" value="7"
+          oninput="updateSGrowth(); calculate()">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Existing Unvested Shares</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Enter gross shares from prior grants already in flight. Net-share withholding (35%) and projected GS price applied automatically.</div>
+
+      <div class="input-row">
+        <div class="input-label" style="margin-bottom:6px"><span style="color:var(--gold);font-size:10px">Current Year Delivery (2026)</span></div>
+        <div class="input-label"><span>Net $ Value Already Received</span></div>
+        <input type="number" id="currentYearDelivery" placeholder="0" min="0" step="1000" oninput="calculate()" style="margin-bottom:4px">
+        <div style="font-size:10px;color:var(--text-muted);line-height:1.4">Treated as already net of tax — no additional withholding applied.</div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">Upcoming deliveries — gross shares, 35% withholding applied.</div>
+
+      <div class="input-row">
+        <div class="input-label"><span>Delivery Year 1</span></div>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="exist1year" placeholder="2027" min="2025" max="2040" style="width:80px" oninput="calculate()">
+          <input type="number" id="exist1shares" placeholder="Gross shares" min="0" step="100" oninput="calculate()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-label"><span>Delivery Year 2</span></div>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="exist2year" placeholder="2028" min="2025" max="2040" style="width:80px" oninput="calculate()">
+          <input type="number" id="exist2shares" placeholder="Gross shares" min="0" step="100" oninput="calculate()">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-label"><span>Delivery Year 3</span></div>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="exist3year" placeholder="2029" min="2025" max="2040" style="width:80px" oninput="calculate()">
+          <input type="number" id="exist3shares" placeholder="Gross shares" min="0" step="100" oninput="calculate()">
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Tax & Domicile</div>
+
+      <div class="input-row">
+        <div class="input-label"><span>Working State</span></div>
+        <select id="workState" onchange="calculate()"></select>
+      </div>
+
+      <div class="input-row">
+        <div class="input-label"><span>Retirement State</span></div>
+        <select id="retState" onchange="calculate()"></select>
+      </div>
+
+      <div class="input-row" style="margin-top:8px">
+        <div class="input-label"><span>Alt. Comparison State (5.3)</span></div>
+        <select id="altState" onchange="calculate()"></select>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('overview')">Overview</div>
+      <div class="tab" onclick="switchTab('working')">Working Phase</div>
+      <div class="tab" onclick="switchTab('retirement')">Retirement</div>
+      <div class="tab" onclick="switchTab('scenarios')">Scenario Analysis</div>
+    </div>
+
+    <!-- OVERVIEW PANEL -->
+    <div id="panel-overview" class="panel active fade-in">
+
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="section-header">
+        <div class="section-title">Income Timeline</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Annual Income by Source — Full Timeline</div>
+          <div class="chart-container"><canvas id="chart-stacked"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Cumulative Wealth — Flat vs. GS Growth</div>
+          <div class="chart-container"><canvas id="chart-cumulative"></canvas></div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Payout Multiple at Retirement</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="multiple-display" id="multiple-display"></div>
+
+    </div>
+
+    <!-- WORKING PHASE PANEL -->
+    <div id="panel-working" class="panel fade-in">
+      <div id="working-flags"></div>
+      <div class="section-header">
+        <div class="section-title">Annual Compensation Schedule</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="table-wrap">
+        <table id="working-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Revenue</th>
+              <th>Base Comp (30%)</th>
+              <th>Grid Bonus</th>
+              <th>Grid Rate</th>
+              <th>Total Comp</th>
+              <th>Eff. Rate</th>
+              <th>Deferral %</th>
+              <th>$ Deferred</th>
+              <th>Cash Comp</th>
+              <th>After-Tax Cash</th>
+            </tr>
+          </thead>
+          <tbody id="working-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Deferred Compensation — Share Grant Schedule</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="table-wrap">
+        <table id="def-comp-table">
+          <thead>
+            <tr>
+              <th>Comp Year</th>
+              <th>Total Comp</th>
+              <th>$ Deferred</th>
+              <th>Grant Price</th>
+              <th>Gross Shares</th>
+              <th>Net Shares (65%)</th>
+              <th>Tranche 1 Delivery</th>
+              <th>Tranche 2 Delivery</th>
+              <th>Tranche 3 Delivery</th>
+              <th>Total Net Value</th>
+            </tr>
+          </thead>
+          <tbody id="def-comp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RETIREMENT PANEL -->
+    <div id="panel-retirement" class="panel fade-in">
+      <div class="section-header">
+        <div class="section-title">PWM Retirement Plan — Benefit Calculation</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="multiple-display" id="ret-multiple-display"></div>
+
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title">5-Year Benefit Schedule</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Retirement Year</th>
+              <th>Flat — Annual</th>
+              <th>Flat — After-Tax</th>
+              <th>Flat — Cumulative</th>
+              <th>Front-Loaded — Annual</th>
+              <th>Front-Loaded — After-Tax</th>
+              <th>Front-Loaded — Cumulative</th>
+            </tr>
+          </thead>
+          <tbody id="benefit-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Deferred Comp Delivery Tail</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Grant Year</th>
+              <th>Tranche</th>
+              <th>Vest Date</th>
+              <th>Delivery Date</th>
+              <th>Gross Shares</th>
+              <th>Net Shares</th>
+              <th>GS Price</th>
+              <th>Net $ Value</th>
+              <th>After-Tax Value</th>
+            </tr>
+          </thead>
+          <tbody id="tail-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Combined Retirement Income Waterfall</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="chart-grid single">
+        <div class="chart-card">
+          <div class="chart-title">Annual Retirement Income — PWM Benefit vs. Deferred Comp Tail</div>
+          <div class="chart-container"><canvas id="chart-waterfall"></canvas></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>PWM Benefit (Flat)</th>
+              <th>PWM Benefit (Front-Loaded)</th>
+              <th>Def Comp Tail</th>
+              <th>Total (Flat)</th>
+              <th>Total (Front-Loaded)</th>
+              <th>After-Tax Total (Flat)</th>
+            </tr>
+          </thead>
+          <tbody id="waterfall-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SCENARIOS PANEL -->
+    <div id="panel-scenarios" class="panel fade-in">
+
+      <!-- 5.2 Timing Sensitivity -->
+      <div class="section-header">
+        <div class="section-title">5.2 — Retirement Timing Sensitivity</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="flag info"><span class="flag-icon">ℹ</span><span>Total 5-year PWM benefit across retirement timing × revenue growth combinations. Payout multiple shown in each cell. All other inputs held constant.</span></div>
+      <div class="sens-grid" id="timing-grid"></div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Total 5-Year Benefit by Retirement Timing</div>
+          <div class="chart-container"><canvas id="chart-timing"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Payout Multiple by Timing × Revenue Growth</div>
+          <div class="chart-container"><canvas id="chart-multiple-sens"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 5.3 Domicile -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title">5.3 — Domicile Change at Retirement</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="flag info"><span class="flag-icon">ℹ</span><span>Compares after-tax retirement income in current retirement state vs. alternative state selected in sidebar. All income is ordinary income.</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Retirement Year</th>
+              <th>Pre-Tax Income</th>
+              <th id="domicile-current-header">Current State</th>
+              <th id="domicile-alt-header">Alt. State</th>
+              <th>Annual Savings</th>
+              <th>Cumulative Savings</th>
+            </tr>
+          </thead>
+          <tbody id="domicile-tbody"></tbody>
+        </table>
+      </div>
+      <div class="chart-grid single">
+        <div class="chart-card">
+          <div class="chart-title">After-Tax Retirement Income — State Comparison</div>
+          <div class="chart-container"><canvas id="chart-domicile"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 5.4 Stress Test -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title">5.4 — Retirement Phase Revenue Stress Test</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="flag info"><span class="flag-icon">ℹ</span><span>PWM benefit is not a fixed annuity — it floats with inherited book performance. This shows the 5-year benefit range across growth scenarios.</span></div>
+      <div class="table-wrap" id="stress-wrap"></div>
+      <div class="chart-grid single">
+        <div class="chart-card">
+          <div class="chart-title">Annual Benefit Trajectory — Growth Scenarios</div>
+          <div class="chart-container"><canvas id="chart-stress"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 5.5 Cliff -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title">5.5 — The $5M Compensation Cliff</div>
+        <div class="section-divider"></div>
+      </div>
+      <div id="cliff-section"></div>
+
+      <!-- 5.6 Break-Even -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title">5.6 — Break-Even Analysis: One More Year</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="flag info"><span class="flag-icon">ℹ</span><span>At what point does the incremental PWM benefit from working one additional year exceed the forgone compensation from that extra year?</span></div>
+      <div class="table-wrap" id="breakeven-wrap"></div>
+      <div class="chart-grid single">
+        <div class="chart-card">
+          <div class="chart-title">Cumulative Incremental PWM Benefit vs. Forgone Compensation</div>
+          <div class="chart-container"><canvas id="chart-breakeven"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// =============================================
+// STATE DATA
+// =============================================
+const STATE_RATES = {
+  "Alabama": 0.05, "Alaska": 0, "Arizona": 0.025, "Arkansas": 0.039,
+  "California": 0.133, "Colorado": 0.044, "Connecticut": 0.0699, "Delaware": 0.066,
+  "District of Columbia": 0.1075, "Florida": 0, "Georgia": 0.0549, "Hawaii": 0.11,
+  "Idaho": 0.058, "Illinois": 0.0495, "Indiana": 0.03, "Iowa": 0.038,
+  "Kansas": 0.0558, "Kentucky": 0.04, "Louisiana": 0.03, "Maine": 0.0715,
+  "Maryland": 0.0575, "Massachusetts": 0.09, "Michigan": 0.0425, "Minnesota": 0.0985,
+  "Mississippi": 0.047, "Missouri": 0.048, "Montana": 0.059, "Nebraska": 0.052,
+  "Nevada": 0, "New Hampshire": 0, "New Jersey": 0.1075, "New Mexico": 0.059,
+  "New York": 0.109, "North Carolina": 0.0425, "North Dakota": 0.025, "Ohio": 0.035,
+  "Oklahoma": 0.0475, "Oregon": 0.099, "Pennsylvania": 0.0307, "Rhode Island": 0.0599,
+  "South Carolina": 0.062, "South Dakota": 0, "Tennessee": 0, "Texas": 0,
+  "Utah": 0.0455, "Vermont": 0.0875, "Virginia": 0.0575, "Washington": 0,
+  "West Virginia": 0.0512, "Wisconsin": 0.0765, "Wyoming": 0
+};
+
+// PRODUCTIVITY GRID (incremental rates stacked on 30% base)
+const GRID = [
+  { from: 0, to: 2800000, rate: 0 },
+  { from: 2800000, to: 3900000, rate: 0.02 },
+  { from: 3900000, to: 4600000, rate: 0.025 },
+  { from: 4600000, to: 5400000, rate: 0.03 },
+  { from: 5400000, to: 6200000, rate: 0.035 },
+  { from: 6200000, to: 7700000, rate: 0.04 },
+  { from: 7700000, to: 9300000, rate: 0.045 },
+  { from: 9300000, to: 10900000, rate: 0.05 },
+  { from: 10900000, to: 12300000, rate: 0.055 },
+  { from: 12300000, to: 13900000, rate: 0.06 },
+  { from: 13900000, to: 15500000, rate: 0.065 },
+  { from: 15500000, to: 17100000, rate: 0.07 },
+  { from: 17100000, to: 18600000, rate: 0.08 },
+  { from: 18600000, to: 20100000, rate: 0.09 },
+  { from: 20100000, to: 30000000, rate: 0.10 },
+  { from: 30000000, to: 40000000, rate: 0.11 },
+  { from: 40000000, to: Infinity, rate: 0.12 }
+];
+
+const FED_ORDINARY = 0.37;
+const FED_NIIT = 0.038;
+const BENEFIT_PERIOD = 5;
+const DEF_TAX = 0.35;
+
+let postTax = true;
+let gsPriceManual = false;
+let charts = {};
+
+// =============================================
+// INIT
+// =============================================
+function init() {
+  populateStateSelects();
+  fetchGSPrice();
+  calculate();
+}
+
+function populateStateSelects() {
+  const states = Object.keys(STATE_RATES).sort();
+  ['workState', 'retState', 'altState'].forEach((id, i) => {
+    const sel = document.getElementById(id);
+    states.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s;
+      opt.textContent = `${s} (${(STATE_RATES[s]*100).toFixed(2)}%)`;
+      if (i === 0 && s === 'Illinois') opt.selected = true;
+      if (i === 1 && s === 'Illinois') opt.selected = true;
+      if (i === 2 && s === 'Florida') opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+async function fetchGSPrice() {
+  const statusEl = document.getElementById('priceStatus');
+  const priceEl = document.getElementById('gsPrice');
+  statusEl.textContent = '…';
+  statusEl.className = 'price-status manual';
+  priceEl.placeholder = 'Fetching…';
+
+  try {
+    const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GS?interval=1d&range=1d');
+    const data = await res.json();
+    const price = data.chart.result[0].meta.regularMarketPrice;
+    if (price && !gsPriceManual) {
+      priceEl.value = price.toFixed(2);
+      statusEl.textContent = 'LIVE';
+      statusEl.className = 'price-status live';
+      calculate();
+    }
+  } catch(e) {
+    priceEl.placeholder = 'Enter price';
+    statusEl.textContent = 'MANUAL';
+    statusEl.className = 'price-status manual';
+    priceEl.value = 900;
+    calculate();
+  }
+}
+
+function updatePriceStatus() {
+  const el = document.getElementById('priceStatus');
+  if (gsPriceManual) { el.textContent = 'MANUAL'; el.className = 'price-status manual'; }
+}
+
+// =============================================
+// DISPLAY UPDATES
+// =============================================
+function updateRevDisplay() {} // no-op, kept for safety
+function updateTenureDisplay() {
+  const t = +document.getElementById('tenure').value;
+  const yr = +document.getElementById('yearsRemaining').value;
+  const el = document.getElementById('tenure-at-ret-display');
+  if (el) el.textContent = `→ ${t + yr} at retirement`;
+}
+function updateYrsDisplay() {} // no-op
+function updateWGrowth() {
+  document.getElementById('wgrowth-display').textContent = `${(+document.getElementById('workGrowth').value).toFixed(1)}%`;
+}
+function updateRGrowth() {
+  document.getElementById('rgrowth-display').textContent = `${(+document.getElementById('retGrowth').value).toFixed(1)}%`;
+}
+function updateSGrowth() {
+  document.getElementById('sgrowth-display').textContent = `${(+document.getElementById('stockGrowth').value).toFixed(1)}%`;
+}
+
+// =============================================
+// CORE CALCULATIONS
+// =============================================
+function gridBonus(rev) {
+  let bonus = 0;
+  for (const tier of GRID) {
+    if (rev <= tier.from) break;
+    const inTier = Math.min(rev, tier.to === Infinity ? rev : tier.to) - tier.from;
+    bonus += inTier * tier.rate;
+  }
+  return bonus;
+}
+
+function totalComp(rev) {
+  const base = rev * 0.30;
+  const bonus = gridBonus(rev);
+  return { base, bonus, total: base + bonus, effRate: (base + bonus) / rev, gridRate: bonus / rev };
+}
+
+function defRate(comp) { return comp >= 5000000 ? 0.50 : 0.36; }
+
+function sizeMultiple(rev) {
+  const r = Math.min(rev, 8000000);
+  if (r <= 2500000) return 1.25;
+  return Math.min(2.25, 1.25 + (r - 2500000) / 5500000 * 1.0);
+}
+
+function tenureMultiple(yrs) {
+  const y = Math.min(yrs, 30);
+  if (y <= 15) return 0.75;
+  return Math.min(1.25, 0.75 + (y - 15) / 15 * 0.50);
+}
+
+function payoutMultiple(rev, yrs) {
+  return Math.min(3.50, sizeMultiple(rev) + tenureMultiple(yrs));
+}
+
+function applyTax(amount, stateRate) {
+  if (!postTax) return amount;
+  return amount * (1 - FED_ORDINARY - stateRate);
+}
+
+function applyTaxInv(amount, stateRate) {
+  // for deferred comp delivered as net shares (already 35% withheld)
+  if (!postTax) return amount;
+  // additional state tax on top of 35% federal withholding
+  return amount * (1 - stateRate);
+}
+
+function fmt(n, dec=0) {
+  if (n == null || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1000000) return sign + '$' + (abs/1000000).toFixed(dec > 0 ? dec : 1) + 'M';
+  if (abs >= 1000) return sign + '$' + (abs/1000).toFixed(0) + 'K';
+  return sign + '$' + abs.toFixed(dec);
+}
+function fmtFull(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', {maximumFractionDigits: 0});
+}
+function pct(n) { return (n*100).toFixed(2) + '%'; }
+function pct1(n) { return (n*100).toFixed(1) + '%'; }
+
+// =============================================
+// MAIN CALCULATE
+// =============================================
+const BASE_YEAR = 2026;
+
+function calculate() {
+  const rev0 = +document.getElementById('revenue').value;
+  const tenure0 = +document.getElementById('tenure').value;
+  const yrsRemaining = +document.getElementById('yearsRemaining').value;
+  const wGrowth = +document.getElementById('workGrowth').value / 100;
+  const rGrowth = +document.getElementById('retGrowth').value / 100;
+  const gsPrice0 = +document.getElementById('gsPrice').value || 900;
+  const sGrowth = +document.getElementById('stockGrowth').value / 100;
+  const workStateRate = STATE_RATES[document.getElementById('workState').value] || 0;
+  const retStateRate = STATE_RATES[document.getElementById('retState').value] || 0;
+  const altStateRate = STATE_RATES[document.getElementById('altState').value] || 0;
+
+  // Current year delivery — already net, no withholding applied
+  const currentYearDelivery = +document.getElementById('currentYearDelivery').value || 0;
+
+  // Existing unvested shares (gross, pre-withholding)
+  const existingPositions = [
+    { year: +document.getElementById('exist1year').value || 0, grossShares: +document.getElementById('exist1shares').value || 0 },
+    { year: +document.getElementById('exist2year').value || 0, grossShares: +document.getElementById('exist2shares').value || 0 },
+    { year: +document.getElementById('exist3year').value || 0, grossShares: +document.getElementById('exist3shares').value || 0 },
+  ].filter(p => p.year >= BASE_YEAR && p.grossShares > 0);
+
+  updateTenureDisplay();
+
+  const retirementCalYear = BASE_YEAR + yrsRemaining;
+
+  // Working phase years — indexed by calendar year
+  const workingYears = [];
+  let revCur = rev0;
+  for (let y = 0; y < yrsRemaining; y++) {
+    const calYear = BASE_YEAR + y;
+    const comp = totalComp(revCur);
+    const dr = defRate(comp.total);
+    const deferred = comp.total * dr;
+    const cash = comp.total - deferred;
+    const afterTaxCash = applyTax(cash, workStateRate);
+    workingYears.push({
+      year: y + 1,
+      calYear,
+      rev: revCur,
+      base: comp.base,
+      bonus: comp.bonus,
+      total: comp.total,
+      effRate: comp.effRate,
+      gridRate: comp.gridRate,
+      deferralRate: dr,
+      deferred,
+      cash,
+      afterTaxCash
+    });
+    revCur = revCur * (1 + wGrowth);
+  }
+
+  const revAtRetirement = workingYears.length > 0 ? workingYears[workingYears.length-1].rev : rev0;
+  const tenureAtRetirement = tenure0 + yrsRemaining;
+
+  // Payout multiple
+  const sm = sizeMultiple(revAtRetirement);
+  const tm = tenureMultiple(tenureAtRetirement);
+  const pm = payoutMultiple(revAtRetirement, tenureAtRetirement);
+
+  // Year 1 benefit
+  const year1Benefit = revAtRetirement * 0.30 * pm / BENEFIT_PERIOD;
+  const totalBenefitPool = year1Benefit * BENEFIT_PERIOD;
+  const flWeights = [0.30, 0.25, 0.20, 0.15, 0.10];
+  let flatCum = 0, flCum = 0;
+  const retBenefits = [];
+  for (let y = 0; y < BENEFIT_PERIOD; y++) {
+    const calYear = retirementCalYear + y;
+    const flatAmt = year1Benefit * Math.pow(1 + rGrowth, y);
+    const flAmt = totalBenefitPool * flWeights[y] * Math.pow(1 + rGrowth, y);
+    flatCum += flatAmt;
+    flCum += flAmt;
+    retBenefits.push({
+      year: y + 1,
+      calYear,
+      flat: flatAmt,
+      flatAfterTax: applyTax(flatAmt, retStateRate),
+      flatCum,
+      frontLoaded: flAmt,
+      flAfterTax: applyTax(flAmt, retStateRate),
+      flCum
+    });
+  }
+
+  // New deferred comp grants from working years
+  // Grant price = GS price in Jan of year AFTER comp year
+  // Shares vest 12/31 of years +1,+2,+3 after grant; deliver 2/1 of following year
+  const grantSchedule = [];
+  workingYears.forEach((wy, idx) => {
+    const compCalYear = wy.calYear;
+    const grantCalYear = compCalYear + 1;
+    // Price at grant = gsPrice0 grown by sGrowth for (idx+1) years from now
+    const grantPrice = gsPrice0 * Math.pow(1 + sGrowth, idx + 1);
+    const grossShares = wy.deferred / grantPrice;
+    const netShares = grossShares * (1 - DEF_TAX);
+    const trancheSz = grossShares / 3;
+    const trancheNet = netShares / 3;
+    const tranches = [1, 2, 3].map(t => {
+      const vestCalYear = grantCalYear + t;
+      const delivCalYear = vestCalYear + 1;
+      // Price at delivery = gsPrice0 grown for (years from now to delivery)
+      const yearsToDeliv = delivCalYear - BASE_YEAR;
+      const delivPrice = gsPrice0 * Math.pow(1 + sGrowth, yearsToDeliv);
+      const netVal = trancheNet * delivPrice;
+      const stateRateAtDeliv = delivCalYear > retirementCalYear ? retStateRate : workStateRate;
+      return {
+        t,
+        vestCalYear,
+        delivCalYear,
+        vestDate: `12/31/${vestCalYear}`,
+        delivDate: `2/1/${delivCalYear}`,
+        grossShares: trancheSz,
+        netShares: trancheNet,
+        price: delivPrice,
+        netVal,
+        afterTaxVal: applyTaxInv(netVal, stateRateAtDeliv)
+      };
+    });
+    grantSchedule.push({ compCalYear, grantCalYear, comp: wy.total, deferred: wy.deferred, grantPrice, grossShares, netShares, tranches });
+  });
+
+  // Existing unvested positions — map to delivery calendar years
+  // Gross shares given; apply 35% net-share withholding; value at projected price
+  const existingDeliveries = existingPositions.map(p => {
+    const yearsToDeliv = p.year - BASE_YEAR;
+    const delivPrice = gsPrice0 * Math.pow(1 + sGrowth, Math.max(0, yearsToDeliv));
+    const netShares = p.grossShares * (1 - DEF_TAX);
+    const netVal = netShares * delivPrice;
+    const stateRateAtDeliv = p.year > retirementCalYear ? retStateRate : workStateRate;
+    return {
+      delivCalYear: p.year,
+      delivDate: `2/1/${p.year}`,
+      grossShares: p.grossShares,
+      netShares,
+      price: delivPrice,
+      netVal,
+      afterTaxVal: applyTaxInv(netVal, stateRateAtDeliv),
+      isExisting: true
+    };
+  });
+
+  // Aggregate deliveries by calendar year (new grants + existing)
+  const delivByCalYear = {};
+  // New grants
+  grantSchedule.forEach(g => {
+    g.tranches.forEach(t => {
+      if (!delivByCalYear[t.delivCalYear]) delivByCalYear[t.delivCalYear] = { netVal: 0, afterTaxVal: 0 };
+      delivByCalYear[t.delivCalYear].netVal += t.netVal;
+      delivByCalYear[t.delivCalYear].afterTaxVal += t.afterTaxVal;
+    });
+  });
+  // Existing positions
+  existingDeliveries.forEach(e => {
+    if (!delivByCalYear[e.delivCalYear]) delivByCalYear[e.delivCalYear] = { netVal: 0, afterTaxVal: 0 };
+    delivByCalYear[e.delivCalYear].netVal += e.netVal;
+    delivByCalYear[e.delivCalYear].afterTaxVal += e.afterTaxVal;
+  });
+
+  // Current year delivery (already net — no withholding, no state tax applied here)
+  if (currentYearDelivery > 0) {
+    if (!delivByCalYear[BASE_YEAR]) delivByCalYear[BASE_YEAR] = { netVal: 0, afterTaxVal: 0 };
+    delivByCalYear[BASE_YEAR].netVal += currentYearDelivery;
+    delivByCalYear[BASE_YEAR].afterTaxVal += currentYearDelivery; // already net
+  }
+
+  // Post-retirement tail deliveries
+  const tailDeliveries = [];
+  grantSchedule.forEach(g => {
+    g.tranches.forEach(t => {
+      if (t.delivCalYear > retirementCalYear) {
+        tailDeliveries.push({ ...t, compCalYear: g.compCalYear, grantCalYear: g.grantCalYear });
+      }
+    });
+  });
+  existingDeliveries.forEach(e => {
+    if (e.delivCalYear > retirementCalYear) {
+      tailDeliveries.push({ ...e, compCalYear: 'Prior Grant', grantCalYear: 'Prior Grant', t: '—', vestDate: '—' });
+    }
+  });
+
+  // Group tail by retirement year offset
+  const tailByRetYear = {};
+  tailDeliveries.forEach(d => {
+    const retYr = d.delivCalYear - retirementCalYear;
+    if (!tailByRetYear[retYr]) tailByRetYear[retYr] = 0;
+    tailByRetYear[retYr] += d.netVal;
+  });
+
+  // Waterfall
+  const waterfall = retBenefits.map((rb, i) => {
+    const tail = tailByRetYear[i + 1] || 0;
+    const tailAT = applyTaxInv(tail, retStateRate);
+    return {
+      year: i + 1,
+      calYear: rb.calYear,
+      flat: rb.flat,
+      flatAT: rb.flatAfterTax,
+      frontLoaded: rb.frontLoaded,
+      flAT: rb.flAfterTax,
+      tail,
+      tailAT,
+      totalFlat: rb.flat + tail,
+      totalFlatAT: rb.flatAfterTax + tailAT,
+      totalFL: rb.frontLoaded + tail
+    };
+  });
+
+  // Build two parallel delivery value maps:
+  // flatDelivByCalYear: all deliveries valued at flat gsPrice0
+  // growthDelivByCalYear: all deliveries valued at growth-projected price (already in netVal)
+  const flatDelivByCalYear = {};
+  const growthDelivByCalYear = {};
+
+  // Current year delivery — same in both (already net dollar amount, no share price involved)
+  if (currentYearDelivery > 0) {
+    flatDelivByCalYear[BASE_YEAR] = (flatDelivByCalYear[BASE_YEAR] || 0) + currentYearDelivery;
+    growthDelivByCalYear[BASE_YEAR] = (growthDelivByCalYear[BASE_YEAR] || 0) + currentYearDelivery;
+  }
+
+  // New grants
+  grantSchedule.forEach(g => {
+    g.tranches.forEach(t => {
+      const stateRate = t.delivCalYear > retirementCalYear ? retStateRate : workStateRate;
+      // Flat: use gsPrice0 for delivery value
+      const flatNetVal = t.netShares * gsPrice0;
+      const flatVal = postTax ? flatNetVal * (1 - stateRate) : flatNetVal;
+      flatDelivByCalYear[t.delivCalYear] = (flatDelivByCalYear[t.delivCalYear] || 0) + flatVal;
+      // Growth: use projected price (already in t.netVal)
+      const growthVal = postTax ? t.netVal * (1 - stateRate) : t.netVal;
+      growthDelivByCalYear[t.delivCalYear] = (growthDelivByCalYear[t.delivCalYear] || 0) + growthVal;
+    });
+  });
+
+  // Existing positions
+  existingDeliveries.forEach(e => {
+    const stateRate = e.delivCalYear > retirementCalYear ? retStateRate : workStateRate;
+    // Flat: use gsPrice0
+    const flatNetVal = e.netShares * gsPrice0;
+    const flatVal = postTax ? flatNetVal * (1 - stateRate) : flatNetVal;
+    flatDelivByCalYear[e.delivCalYear] = (flatDelivByCalYear[e.delivCalYear] || 0) + flatVal;
+    // Growth: projected price already in e.netVal
+    const growthVal = postTax ? e.netVal * (1 - stateRate) : e.netVal;
+    growthDelivByCalYear[e.delivCalYear] = (growthDelivByCalYear[e.delivCalYear] || 0) + growthVal;
+  });
+
+  // Cumulative comp — flat vs growth tracked separately
+  let cumFlatPre = 0, cumFlatPost = 0, cumGrowthPre = 0, cumGrowthPost = 0;
+  const cumulativeData = [];
+
+  const addDelivYear = (calYear) => {
+    const fd = flatDelivByCalYear[calYear];
+    const gd = growthDelivByCalYear[calYear];
+    if (fd) { cumFlatPre += fd; cumFlatPost += fd; }
+    if (gd) { cumGrowthPre += gd; cumGrowthPost += gd; }
+  };
+
+  // Working years
+  workingYears.forEach(wy => {
+    const cashPre = wy.cash;
+    const cashPost = wy.afterTaxCash;
+    cumFlatPre += cashPre; cumFlatPost += cashPost;
+    cumGrowthPre += cashPre; cumGrowthPost += cashPost;
+    addDelivYear(wy.calYear);
+    cumulativeData.push({ year: String(wy.calYear), flatPre: cumFlatPre, flatPost: cumFlatPost, growthPre: cumGrowthPre, growthPost: cumGrowthPost });
+  });
+
+  // Gap years between working phase end and retirement
+  const workLastYear = workingYears.length > 0 ? workingYears[workingYears.length-1].calYear : BASE_YEAR - 1;
+  for (let y = workLastYear + 1; y < retirementCalYear; y++) {
+    const hasFD = flatDelivByCalYear[y], hasGD = growthDelivByCalYear[y];
+    if (hasFD || hasGD) {
+      addDelivYear(y);
+      cumulativeData.push({ year: String(y), flatPre: cumFlatPre, flatPost: cumFlatPost, growthPre: cumGrowthPre, growthPost: cumGrowthPost });
+    }
+  }
+
+  // Retirement years — PWM benefit same in both streams (not stock-price dependent)
+  retBenefits.forEach((rb, i) => {
+    const tail = tailByRetYear[i+1] || 0;
+    const benefitPre = rb.flat + tail;
+    const benefitPost = rb.flatAfterTax + applyTaxInv(tail, retStateRate);
+    cumFlatPre += benefitPre; cumFlatPost += benefitPost;
+    cumGrowthPre += benefitPre; cumGrowthPost += benefitPost;
+    // Also pick up any deferred deliveries in retirement years
+    addDelivYear(rb.calYear);
+    cumulativeData.push({ year: String(rb.calYear), flatPre: cumFlatPre, flatPost: cumFlatPost, growthPre: cumGrowthPre, growthPost: cumGrowthPost });
+  });
+
+  // ---- RENDER ----
+  renderKPIs(workingYears, year1Benefit, totalBenefitPool, pm, revAtRetirement, tenureAtRetirement);
+  renderMultiple(sm, tm, pm, 'multiple-display');
+  renderMultiple(sm, tm, pm, 'ret-multiple-display');
+  renderWorkingTable(workingYears, workStateRate);
+  renderDefCompTable(grantSchedule, existingDeliveries, currentYearDelivery);
+  renderBenefitTable(retBenefits);
+  renderTailTable(tailDeliveries, retStateRate);
+  renderWaterfallTable(waterfall);
+  renderDomicileTable(waterfall, retStateRate, altStateRate);
+  renderStressTest(year1Benefit);
+  renderCliff(workingYears, workStateRate);
+  renderBreakEven(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate);
+  renderTimingSensitivity(rev0, tenure0, yrsRemaining, rGrowth);
+  renderFlags(workingYears, revAtRetirement, tenureAtRetirement);
+
+  // CHARTS
+  renderStackedChart(workingYears, retBenefits, tailByRetYear, grantSchedule, existingDeliveries, currentYearDelivery, retirementCalYear, workStateRate, retStateRate);
+  renderCumulativeChart(cumulativeData);
+  renderWaterfallChart(waterfall);
+  renderDomicileChart(waterfall, retStateRate, altStateRate);
+  renderStressChart(year1Benefit);
+  renderTimingChart(rev0, tenure0, yrsRemaining, rGrowth);
+  renderBreakEvenChart(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate);
+}
+
+// =============================================
+// RENDER FUNCTIONS
+// =============================================
+function renderKPIs(workingYears, year1Benefit, totalBenefitPool, pm, revAtRetirement, tenureAtRetirement) {
+  const lastWY = workingYears[workingYears.length - 1];
+  const kpis = [
+    { label: 'Current Year Comp', value: fmt(workingYears[0].total), sub: `${pct1(workingYears[0].effRate)} eff. rate`, cls: '' },
+    { label: 'Comp at Retirement', value: fmt(lastWY.total), sub: `${pct1(lastWY.effRate)} eff. rate`, cls: '' },
+    { label: 'PWM Payout Multiple', value: pm.toFixed(2) + 'x', sub: `Size ${sizeMultiple(revAtRetirement).toFixed(2)}x + Tenure ${tenureMultiple(tenureAtRetirement).toFixed(2)}x`, cls: 'green' },
+    { label: 'Avg Annual Benefit (Yr1)', value: fmt(year1Benefit), sub: `Total pool: ${fmt(totalBenefitPool)}`, cls: 'blue' }
+  ];
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k =>
+    `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`
+  ).join('');
+}
+
+function renderMultiple(sm, tm, pm, containerId) {
+  const items = [
+    { label: 'Size Multiple', value: sm.toFixed(3) + 'x', note: 'of 2.25x max' },
+    { label: 'Tenure Multiple', value: tm.toFixed(3) + 'x', note: 'of 1.25x max' },
+    { label: 'Payout Multiple', value: pm.toFixed(3) + 'x', note: pm >= 3.499 ? 'MAXIMUM' : `of 3.50x max`, cls: pm >= 3.499 ? 'max' : '' }
+  ];
+  document.getElementById(containerId).innerHTML = items.map(i =>
+    `<div class="multiple-card"><div class="multiple-label">${i.label}</div><div class="multiple-value ${i.cls||''}">${i.value}</div><div class="kpi-sub" style="margin-top:4px">${i.note}</div></div>`
+  ).join('');
+}
+
+function renderWorkingTable(workingYears, workStateRate) {
+  const tbody = document.getElementById('working-tbody');
+  tbody.innerHTML = workingYears.map((wy, i) => {
+    const isCliff = i > 0 && workingYears[i-1].deferralRate === 0.36 && wy.deferralRate === 0.50;
+    return `<tr class="${isCliff ? 'cliff-row' : ''}">
+      <td>${wy.calYear} ${isCliff ? '<span style="color:var(--red);font-size:9px">▲ CLIFF</span>' : ''}</td>
+      <td>${fmtFull(wy.rev)}</td>
+      <td>${fmtFull(wy.base)}</td>
+      <td class="gold">${fmtFull(wy.bonus)}</td>
+      <td>${pct(wy.gridRate)}</td>
+      <td class="gold">${fmtFull(wy.total)}</td>
+      <td>${pct(wy.effRate)}</td>
+      <td>${(wy.deferralRate*100).toFixed(0)}%</td>
+      <td>${fmtFull(wy.deferred)}</td>
+      <td>${fmtFull(wy.cash)}</td>
+      <td class="${postTax ? '' : 'dim'}">${postTax ? fmtFull(wy.afterTaxCash) : '—'}</td>
+    </tr>`;
+  }).join('') + `<tr class="total-row">
+    <td>TOTAL</td>
+    <td>—</td>
+    <td>${fmtFull(workingYears.reduce((s,w)=>s+w.base,0))}</td>
+    <td>${fmtFull(workingYears.reduce((s,w)=>s+w.bonus,0))}</td>
+    <td>—</td>
+    <td>${fmtFull(workingYears.reduce((s,w)=>s+w.total,0))}</td>
+    <td>—</td>
+    <td>—</td>
+    <td>${fmtFull(workingYears.reduce((s,w)=>s+w.deferred,0))}</td>
+    <td>${fmtFull(workingYears.reduce((s,w)=>s+w.cash,0))}</td>
+    <td>${fmtFull(workingYears.reduce((s,w)=>s+w.afterTaxCash,0))}</td>
+  </tr>`;
+}
+
+function renderDefCompTable(grantSchedule, existingDeliveries, currentYearDelivery) {
+  const tbody = document.getElementById('def-comp-tbody');
+  let rows = '';
+
+  // Current year delivery row (already net)
+  if (currentYearDelivery > 0) {
+    rows += `<tr style="background:var(--surface2)"><td colspan="10" style="color:var(--gold);font-size:10px;letter-spacing:0.08em;text-transform:uppercase">Current Year Delivery (${BASE_YEAR})</td></tr>`;
+    rows += `<tr>
+      <td style="color:var(--gold)">${BASE_YEAR}</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td colspan="3" style="color:var(--text-muted);font-size:10px">Already delivered — net of tax, no withholding applied</td>
+      <td class="green">${fmtFull(currentYearDelivery)}</td>
+    </tr>`;
+  }
+
+  // Existing positions section
+  if (existingDeliveries.length > 0) {
+    rows += `<tr style="background:var(--surface2)"><td colspan="10" style="color:var(--gold);font-size:10px;letter-spacing:0.08em;text-transform:uppercase">Existing Unvested Positions</td></tr>`;
+    existingDeliveries.forEach(e => {
+      rows += `<tr>
+        <td style="color:var(--gold)">Prior Grant</td>
+        <td>—</td>
+        <td>—</td>
+        <td>$${e.price.toFixed(2)}</td>
+        <td>${Math.floor(e.grossShares).toLocaleString()}</td>
+        <td class="gold">${Math.floor(e.netShares).toLocaleString()}</td>
+        <td>${e.delivDate}</td>
+        <td>—</td>
+        <td>—</td>
+        <td class="green">${fmtFull(e.netVal)}</td>
+      </tr>`;
+    });
+  }
+
+  if (grantSchedule.length > 0) {
+    rows += `<tr style="background:var(--surface2)"><td colspan="10" style="color:var(--text-muted);font-size:10px;letter-spacing:0.08em;text-transform:uppercase">New Grants — Working Phase</td></tr>`;
+    rows += grantSchedule.map(g => {
+      const totalNetVal = g.tranches.reduce((s,t)=>s+t.netVal,0);
+      const t1 = g.tranches[0], t2 = g.tranches[1], t3 = g.tranches[2];
+      return `<tr>
+        <td>${g.compCalYear}</td>
+        <td>${fmtFull(g.comp)}</td>
+        <td>${fmtFull(g.deferred)}</td>
+        <td>$${g.grantPrice.toFixed(2)}</td>
+        <td>${Math.floor(g.grossShares).toLocaleString()}</td>
+        <td class="gold">${Math.floor(g.netShares).toLocaleString()}</td>
+        <td>${t1.delivDate} · ${Math.floor(t1.netShares).toLocaleString()}sh · ${fmtFull(t1.netVal)}</td>
+        <td>${t2.delivDate} · ${Math.floor(t2.netShares).toLocaleString()}sh · ${fmtFull(t2.netVal)}</td>
+        <td>${t3.delivDate} · ${Math.floor(t3.netShares).toLocaleString()}sh · ${fmtFull(t3.netVal)}</td>
+        <td class="green">${fmtFull(totalNetVal)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  tbody.innerHTML = rows;
+}
+
+function renderBenefitTable(retBenefits) {
+  const tbody = document.getElementById('benefit-tbody');
+  tbody.innerHTML = retBenefits.map(rb => `<tr class="retirement-row">
+    <td>${rb.calYear}</td>
+    <td>${fmtFull(rb.flat)}</td>
+    <td class="${postTax ? 'green' : 'dim'}">${postTax ? fmtFull(rb.flatAfterTax) : '—'}</td>
+    <td>${fmtFull(rb.flatCum)}</td>
+    <td>${fmtFull(rb.frontLoaded)}</td>
+    <td class="${postTax ? 'green' : 'dim'}">${postTax ? fmtFull(rb.flAfterTax) : '—'}</td>
+    <td>${fmtFull(rb.flCum)}</td>
+  </tr>`).join('') + `<tr class="total-row">
+    <td>TOTAL</td>
+    <td>${fmtFull(retBenefits.reduce((s,r)=>s+r.flat,0))}</td>
+    <td>${fmtFull(retBenefits.reduce((s,r)=>s+r.flatAfterTax,0))}</td>
+    <td>—</td>
+    <td>${fmtFull(retBenefits.reduce((s,r)=>s+r.frontLoaded,0))}</td>
+    <td>${fmtFull(retBenefits.reduce((s,r)=>s+r.flAfterTax,0))}</td>
+    <td>—</td>
+  </tr>`;
+}
+
+function renderTailTable(tailDeliveries, retStateRate) {
+  const tbody = document.getElementById('tail-tbody');
+  if (tailDeliveries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--text-muted);text-align:center">No post-retirement deferred comp deliveries with current inputs</td></tr>';
+    return;
+  }
+  tbody.innerHTML = tailDeliveries.map(t => `<tr class="retirement-row">
+    <td>${t.compCalYear || t.compYear || 'Prior Grant'}</td>
+    <td>${t.t !== undefined ? t.t + ' of 3' : '—'}</td>
+    <td>${t.vestDate || '—'}</td>
+    <td>${t.delivDate}</td>
+    <td>${Math.floor(t.grossShares).toLocaleString()}</td>
+    <td>${Math.floor(t.netShares).toLocaleString()}</td>
+    <td>$${t.price.toFixed(2)}</td>
+    <td class="gold">${fmtFull(t.netVal)}</td>
+    <td class="${postTax ? 'green' : 'dim'}">${postTax ? fmtFull(t.afterTaxVal) : '—'}</td>
+  </tr>`).join('');
+}
+
+function renderWaterfallTable(waterfall) {
+  const tbody = document.getElementById('waterfall-tbody');
+  tbody.innerHTML = waterfall.map(w => `<tr class="retirement-row">
+    <td>${w.calYear}</td>
+    <td>${fmtFull(w.flat)}</td>
+    <td>${fmtFull(w.frontLoaded)}</td>
+    <td class="gold">${w.tail > 0 ? fmtFull(w.tail) : '—'}</td>
+    <td>${fmtFull(w.totalFlat)}</td>
+    <td>${fmtFull(w.totalFL)}</td>
+    <td class="${postTax?'green':'dim'}">${postTax ? fmtFull(w.totalFlatAT) : '—'}</td>
+  </tr>`).join('') + `<tr class="total-row">
+    <td>TOTAL</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=>s+w.flat,0))}</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=>s+w.frontLoaded,0))}</td>
+    <td class="gold">${fmtFull(waterfall.reduce((s,w)=>s+w.tail,0))}</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=>s+w.totalFlat,0))}</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=>s+w.totalFL,0))}</td>
+    <td class="green">${fmtFull(waterfall.reduce((s,w)=>s+w.totalFlatAT,0))}</td>
+  </tr>`;
+}
+
+function renderDomicileTable(waterfall, retStateRate, altStateRate) {
+  const retStateName = document.getElementById('retState').value;
+  const altStateName = document.getElementById('altState').value;
+  document.getElementById('domicile-current-header').textContent = retStateName + ' (' + pct(retStateRate) + ')';
+  document.getElementById('domicile-alt-header').textContent = altStateName + ' (' + pct(altStateRate) + ')';
+  const tbody = document.getElementById('domicile-tbody');
+  let cumSavings = 0;
+  tbody.innerHTML = waterfall.map(w => {
+    const preTax = w.totalFlat;
+    const currentAT = w.flat * (1 - FED_ORDINARY - retStateRate) + w.tail * (1 - retStateRate);
+    const altAT = w.flat * (1 - FED_ORDINARY - altStateRate) + w.tail * (1 - altStateRate);
+    const savings = altAT - currentAT;
+    cumSavings += savings;
+    return `<tr class="retirement-row">
+      <td>${w.calYear}</td>
+      <td>${fmtFull(preTax)}</td>
+      <td>${postTax ? fmtFull(currentAT) : fmtFull(preTax)}</td>
+      <td>${postTax ? fmtFull(altAT) : fmtFull(preTax)}</td>
+      <td class="${savings > 0 ? 'positive' : 'negative'}">${postTax ? fmtFull(savings) : '—'}</td>
+      <td class="${cumSavings > 0 ? 'positive' : 'negative'}">${postTax ? fmtFull(cumSavings) : '—'}</td>
+    </tr>`;
+  }).join('') + `<tr class="total-row">
+    <td>TOTAL</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=>s+w.totalFlat,0))}</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=> s + w.flat*(1-FED_ORDINARY-retStateRate) + w.tail*(1-retStateRate),0))}</td>
+    <td>${fmtFull(waterfall.reduce((s,w)=> s + w.flat*(1-FED_ORDINARY-altStateRate) + w.tail*(1-altStateRate),0))}</td>
+    <td class="positive">${fmtFull(waterfall.reduce((s,w)=> s + (w.flat*(1-FED_ORDINARY-altStateRate)+w.tail*(1-altStateRate)) - (w.flat*(1-FED_ORDINARY-retStateRate)+w.tail*(1-retStateRate)),0))}</td>
+    <td>—</td>
+  </tr>`;
+}
+
+function renderStressTest(year1Benefit) {
+  const scenarios = [-0.05, 0, 0.02, 0.05, 0.08];
+  const labels = ['-5%', '0%', '+2%', '+5%', '+8%'];
+  let html = `<table><thead><tr><th>Scenario</th>${[1,2,3,4,5].map(y=>`<th>Year ${y}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  scenarios.forEach((g, si) => {
+    let total = 0;
+    let cells = '';
+    for (let y = 0; y < 5; y++) {
+      const amt = year1Benefit * Math.pow(1+g, y);
+      total += amt;
+      const cls = g > 0 ? 'sens-high' : g < 0 ? 'sens-low' : 'sens-mid';
+      cells += `<td class="${cls}">${fmtFull(amt)}</td>`;
+    }
+    html += `<tr><td class="row-header">${labels[si]}</td>${cells}<td class="gold">${fmtFull(total)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('stress-wrap').innerHTML = html;
+}
+
+function renderCliff(workingYears, workStateRate) {
+  const cliffYear = workingYears.findIndex((w, i) => i > 0 && workingYears[i-1].deferralRate === 0.36 && w.deferralRate === 0.50);
+  const el = document.getElementById('cliff-section');
+  if (workingYears.length === 0) { el.innerHTML = ''; return; }
+  if (workingYears[0].deferralRate === 0.50) {
+    el.innerHTML = `<div class="flag warning"><span class="flag-icon">⚡</span><span>Current compensation is already above $5,000,000 — 50% deferral rate applies throughout the working phase.</span></div>`;
+    return;
+  }
+  if (cliffYear === -1) {
+    const maxComp = workingYears[workingYears.length-1].total;
+    el.innerHTML = `<div class="flag info"><span class="flag-icon">ℹ</span><span>Projected compensation does not cross the $5M cliff within the ${workingYears.length}-year working phase. Max projected comp: ${fmtFull(maxComp)}. 36% deferral applies throughout.</span></div>`;
+    return;
+  }
+  const before = workingYears[cliffYear - 1];
+  const cliff = workingYears[cliffYear];
+  const after = cliffYear + 1 < workingYears.length ? workingYears[cliffYear + 1] : null;
+  let html = `<div class="flag warning"><span class="flag-icon">⚡</span><span>Compensation crosses $5M in <strong>Year ${cliff.year}</strong>. Deferral rate steps from 36% → 50%. Cash compensation decreases ${fmtFull(before.cash - cliff.cash)} in this year despite higher total comp.</span></div>`;
+  html += `<div class="table-wrap"><table><thead><tr><th>Year</th><th>Total Comp</th><th>Deferral Rate</th><th>$ Deferred</th><th>Cash Comp</th><th>YoY Cash Change</th></tr></thead><tbody>`;
+  const rows = [before, cliff, after].filter(Boolean);
+  rows.forEach((w, i) => {
+    const prev = i > 0 ? rows[i-1] : null;
+    const cashChg = prev ? w.cash - prev.cash : null;
+    const isCliffRow = w === cliff;
+    html += `<tr class="${isCliffRow ? 'cliff-row' : ''}">
+      <td>Year ${w.year}${isCliffRow ? ' ▲ CLIFF' : ''}</td>
+      <td>${fmtFull(w.total)}</td>
+      <td class="${isCliffRow ? 'negative' : ''}">${(w.deferralRate*100).toFixed(0)}%</td>
+      <td>${fmtFull(w.deferred)}</td>
+      <td>${fmtFull(w.cash)}</td>
+      <td class="${cashChg != null ? (cashChg >= 0 ? 'positive' : 'negative') : ''}">${cashChg != null ? (cashChg >= 0 ? '+' : '') + fmtFull(cashChg) : '—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('cliff-section').innerHTML = html;
+}
+
+function renderBreakEven(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate) {
+  // Benefit if retire now vs. one year later
+  const revNow = rev0 * Math.pow(1 + wGrowth, yrsRemaining - 1);
+  const tenNow = tenure0 + yrsRemaining;
+  const pmNow = payoutMultiple(revNow, tenNow);
+  const benefit1 = revNow * 0.30 * pmNow / BENEFIT_PERIOD;
+  const totalNow = benefit1 * BENEFIT_PERIOD;
+
+  const revLater = revNow * (1 + wGrowth);
+  const tenLater = tenNow + 1;
+  const pmLater = payoutMultiple(revLater, tenLater);
+  const benefit1Later = revLater * 0.30 * pmLater / BENEFIT_PERIOD;
+  const totalLater = benefit1Later * BENEFIT_PERIOD;
+
+  const incBenefit = totalLater - totalNow;
+  const compLater = totalComp(revLater);
+  const drLater = defRate(compLater.total);
+  const forgoneComp = compLater.total; // full year of comp forgone
+  const forCash = forgoneComp * (1 - drLater);
+
+  // Break-even: how many years of incremental benefit to recoup forgone comp
+  // Incremental annual benefit from extra year = (benefit1Later - benefit1)
+  const annualIncremental = benefit1Later - benefit1;
+
+  const html = `<div class="table-wrap"><table><thead>
+    <tr><th>Scenario</th><th>Forgone Comp (1 Yr)</th><th>Incremental PWM Benefit</th><th>Net Benefit of Waiting</th><th>Annual Incremental Benefit</th><th>Implied Break-Even</th></tr>
+  </thead><tbody>
+    <tr><td>Pre-Tax</td><td class="negative">${fmtFull(forgoneComp)}</td><td class="positive">${fmtFull(incBenefit)}</td><td class="${incBenefit > forgoneComp ? 'positive' : 'negative'}">${fmtFull(incBenefit - forgoneComp)}</td><td>${fmtFull(annualIncremental)}</td><td>${annualIncremental > 0 ? (forgoneComp / annualIncremental).toFixed(1) + ' yrs' : 'N/A'}</td></tr>
+    <tr><td>Post-Tax (ret. state)</td><td class="negative">${fmtFull(forCash * (1 - FED_ORDINARY - workStateRate))}</td><td class="positive">${fmtFull(incBenefit * (1 - FED_ORDINARY - retStateRate))}</td><td class="${incBenefit > forgoneComp ? 'positive' : 'negative'}">${fmtFull(incBenefit*(1-FED_ORDINARY-retStateRate) - forCash*(1-FED_ORDINARY-workStateRate))}</td><td>${fmtFull(annualIncremental*(1-FED_ORDINARY-retStateRate))}</td><td>${annualIncremental > 0 ? (forCash*(1-FED_ORDINARY-workStateRate) / (annualIncremental*(1-FED_ORDINARY-retStateRate))).toFixed(1) + ' yrs' : 'N/A'}</td></tr>
+  </tbody></table></div>`;
+  document.getElementById('breakeven-wrap').innerHTML = html;
+
+  // Store for chart
+  window._beData = { forgoneComp, annualIncremental, totalLater, totalNow };
+}
+
+function renderTimingSensitivity(rev0, tenure0, yrsRemaining, rGrowth) {
+  const timings = [3, 5, 7, 10].filter(t => t <= 20);
+  const growthRates = [0, 0.03, 0.05, 0.08, 0.10];
+  const growthLabels = ['0%', '+3%', '+5%', '+8%', '+10%'];
+
+  let html = `<table class="sens-table"><thead><tr><th>Rev Growth →</th>${timings.map(t=>`<th>Retire in ${t} yrs</th>`).join('')}</tr></thead><tbody>`;
+  growthRates.forEach((g, gi) => {
+    html += `<tr><td class="row-header">${growthLabels[gi]}</td>`;
+    timings.forEach(yrs => {
+      const rev = rev0 * Math.pow(1 + g, yrs);
+      const ten = tenure0 + yrs;
+      const pm = payoutMultiple(rev, ten);
+      const y1 = rev * 0.30 * pm / BENEFIT_PERIOD;
+      const total = y1 * BENEFIT_PERIOD;
+      const cls = total > rev0 * 0.30 * 3 * 5 / 5 ? 'sens-high' : total < rev0 * 0.30 * 2 * 5 / 5 ? 'sens-low' : 'sens-mid';
+      html += `<td class="${cls}">${fmt(total)}<br><span style="font-size:9px;color:var(--text-muted)">${pm.toFixed(2)}x</span></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('timing-grid').innerHTML = html;
+}
+
+function renderFlags(workingYears, revAtRetirement, tenureAtRetirement) {
+  const flagsEl = document.getElementById('working-flags');
+  const flags = [];
+  const lastComp = workingYears[workingYears.length-1];
+  if (lastComp && lastComp.total < 900000) {
+    flags.push(`<div class="flag warning"><span class="flag-icon">⚠</span><span>Projected compensation at retirement (${fmtFull(lastComp.total)}) is below the $900,000 eligibility threshold. User may not qualify for the PWM Retirement Plan.</span></div>`);
+  }
+  if (revAtRetirement < 2500000) {
+    flags.push(`<div class="flag warning"><span class="flag-icon">⚠</span><span>Revenue at retirement (${fmtFull(revAtRetirement)}) is below the $2.5M minimum for Size Multiple calculation. Floor of 1.25x applies.</span></div>`);
+  }
+  flagsEl.innerHTML = flags.join('');
+}
+
+// =============================================
+// CHARTS
+// =============================================
+function getChartDefaults() {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#8a919e', font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 14 } },
+      tooltip: {
+        backgroundColor: '#1e232b', borderColor: '#2e3540', borderWidth: 1,
+        titleColor: '#e8eaed', bodyColor: '#8a919e',
+        titleFont: { family: 'DM Mono', size: 11 },
+        bodyFont: { family: 'DM Mono', size: 10 },
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.raw)}` }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#4a5260', font: { family: 'DM Mono', size: 9 } }, grid: { color: '#181c22' } },
+      y: { ticks: { color: '#4a5260', font: { family: 'DM Mono', size: 9 }, callback: v => fmt(v) }, grid: { color: '#181c22' } }
+    }
+  };
+}
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function renderStackedChart(workingYears, retBenefits, tailByRetYear, grantSchedule, existingDeliveries, currentYearDelivery, retirementCalYear, workStateRate, retStateRate) {
+  destroyChart('stacked');
+
+  // Build a complete year range from BASE_YEAR through end of retirement
+  const firstYear = BASE_YEAR;
+  const lastYear = retBenefits.length > 0 ? retBenefits[retBenefits.length-1].calYear : retirementCalYear + BENEFIT_PERIOD - 1;
+  const allYears = [];
+  for (let y = firstYear; y <= lastYear; y++) allYears.push(y);
+  const labels = allYears.map(String);
+
+  // Cash comp — only in working years
+  const cashData = allYears.map(y => {
+    const wy = workingYears.find(w => w.calYear === y);
+    return wy ? (postTax ? wy.afterTaxCash : wy.cash) : 0;
+  });
+
+  // Deferred comp deliveries — all sources, keyed by calendar year
+  const defByYear = {};
+
+  // Current year delivery (already net)
+  if (currentYearDelivery > 0) {
+    defByYear[BASE_YEAR] = (defByYear[BASE_YEAR] || 0) + currentYearDelivery;
+  }
+
+  // New grants
+  grantSchedule.forEach(g => {
+    g.tranches.forEach(t => {
+      const stateRate = t.delivCalYear > retirementCalYear ? retStateRate : workStateRate;
+      const val = postTax ? t.netVal * (1 - stateRate) : t.netVal;
+      defByYear[t.delivCalYear] = (defByYear[t.delivCalYear] || 0) + val;
+    });
+  });
+
+  // Existing positions
+  existingDeliveries.forEach(e => {
+    const stateRate = e.delivCalYear > retirementCalYear ? retStateRate : workStateRate;
+    const val = postTax ? e.netVal * (1 - stateRate) : e.netVal;
+    defByYear[e.delivCalYear] = (defByYear[e.delivCalYear] || 0) + val;
+  });
+
+  const defData = allYears.map(y => defByYear[y] || 0);
+
+  // PWM benefit — only in retirement years
+  const benefitData = allYears.map(y => {
+    const rb = retBenefits.find(r => r.calYear === y);
+    return rb ? (postTax ? rb.flatAfterTax : rb.flat) : 0;
+  });
+
+  const ctx = document.getElementById('chart-stacked').getContext('2d');
+  const opts = getChartDefaults();
+  opts.scales.x.ticks.maxRotation = 45;
+
+  charts['stacked'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Cash Comp', data: cashData, backgroundColor: 'rgba(74,158,255,0.6)', stack: 'a' },
+        { label: 'Def Comp Delivery', data: defData, backgroundColor: 'rgba(201,168,76,0.6)', stack: 'a' },
+        { label: 'PWM Plan Benefit', data: benefitData, backgroundColor: 'rgba(61,220,151,0.6)', stack: 'a' }
+      ]
+    },
+    options: opts
+  });
+}
+
+function renderCumulativeChart(cumulativeData) {
+  destroyChart('cumulative');
+  const ctx = document.getElementById('chart-cumulative').getContext('2d');
+  const opts = getChartDefaults();
+  opts.scales.x.ticks.maxRotation = 45;
+  charts['cumulative'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: cumulativeData.map(d => d.year),
+      datasets: [
+        { label: 'Pre-Tax (Flat Stock)', data: cumulativeData.map(d => d.flatPre), borderColor: '#4a9eff', borderWidth: 2, pointRadius: 2, fill: false, tension: 0.3 },
+        { label: 'Post-Tax (Flat Stock)', data: cumulativeData.map(d => d.flatPost), borderColor: '#4a9eff', borderWidth: 1.5, borderDash: [4,4], pointRadius: 2, fill: false, tension: 0.3 },
+        { label: 'Pre-Tax (GS Growth)', data: cumulativeData.map(d => d.growthPre), borderColor: '#c9a84c', borderWidth: 2, pointRadius: 2, fill: false, tension: 0.3 },
+        { label: 'Post-Tax (GS Growth)', data: cumulativeData.map(d => d.growthPost), borderColor: '#c9a84c', borderWidth: 1.5, borderDash: [4,4], pointRadius: 2, fill: false, tension: 0.3 }
+      ]
+    },
+    options: opts
+  });
+}
+
+function renderWaterfallChart(waterfall) {
+  destroyChart('waterfall');
+  const ctx = document.getElementById('chart-waterfall').getContext('2d');
+  const opts = getChartDefaults();
+  charts['waterfall'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: waterfall.map(w => `Year ${w.year}`),
+      datasets: [
+        { label: 'PWM Benefit (Flat)', data: waterfall.map(w => postTax ? w.flatAT : w.flat), backgroundColor: 'rgba(61,220,151,0.6)', stack: 'a' },
+        { label: 'Def Comp Tail', data: waterfall.map(w => postTax ? w.tailAT : w.tail), backgroundColor: 'rgba(201,168,76,0.7)', stack: 'a' }
+      ]
+    },
+    options: opts
+  });
+}
+
+function renderDomicileChart(waterfall, retStateRate, altStateRate) {
+  destroyChart('domicile');
+  const ctx = document.getElementById('chart-domicile').getContext('2d');
+  const opts = getChartDefaults();
+  const retStateName = document.getElementById('retState').value;
+  const altStateName = document.getElementById('altState').value;
+  charts['domicile'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: waterfall.map(w => `Year ${w.year}`),
+      datasets: [
+        { label: retStateName, data: waterfall.map(w => w.flat*(1-FED_ORDINARY-retStateRate)+w.tail*(1-retStateRate)), backgroundColor: 'rgba(74,158,255,0.5)' },
+        { label: altStateName, data: waterfall.map(w => w.flat*(1-FED_ORDINARY-altStateRate)+w.tail*(1-altStateRate)), backgroundColor: 'rgba(61,220,151,0.5)' }
+      ]
+    },
+    options: opts
+  });
+}
+
+function renderStressChart(year1Benefit) {
+  destroyChart('stress');
+  const ctx = document.getElementById('chart-stress').getContext('2d');
+  const scenarios = [-0.05, 0, 0.02, 0.05, 0.08];
+  const labels = ['Year 1','Year 2','Year 3','Year 4','Year 5'];
+  const colors = ['#ff6b6b','#8a919e','#c9a84c','#4a9eff','#3ddc97'];
+  const scenLabels = ['-5%','0%','+2%','+5%','+8%'];
+  const opts = getChartDefaults();
+  charts['stress'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: scenarios.map((g,i) => ({
+        label: `Growth ${scenLabels[i]}`,
+        data: [0,1,2,3,4].map(y => year1Benefit * Math.pow(1+g,y) * (postTax ? (1-FED_ORDINARY-0.0495) : 1)),
+        borderColor: colors[i], borderWidth: 2, pointRadius: 3, fill: false, tension: 0.3
+      }))
+    },
+    options: opts
+  });
+}
+
+function renderTimingChart(rev0, tenure0, yrsRemaining, rGrowth) {
+  destroyChart('timing');
+  const ctx = document.getElementById('chart-timing').getContext('2d');
+  const timings = [3, 5, 7, 10].filter(t => t <= 20);
+  const growthRates = [0, 0.03, 0.05, 0.08, 0.10];
+  const growthLabels = ['0%','+3%','+5%','+8%','+10%'];
+  const colors = ['#ff6b6b','#8a919e','#c9a84c','#4a9eff','#3ddc97'];
+  const opts = getChartDefaults();
+  charts['timing'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: timings.map(t => `Retire in ${t} yrs`),
+      datasets: growthRates.map((g,i) => ({
+        label: `Rev Growth ${growthLabels[i]}`,
+        data: timings.map(yrs => {
+          const rev = rev0 * Math.pow(1+g, yrs);
+          const ten = tenure0 + yrs;
+          const pm = payoutMultiple(rev, ten);
+          return rev * 0.30 * pm;
+        }),
+        backgroundColor: colors[i].replace(')', ',0.6)').replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', '#').startsWith('#') ? colors[i] + '99' : colors[i]
+      }))
+    },
+    options: opts
+  });
+  // Rebuild datasets properly
+  destroyChart('timing');
+  charts['timing'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: timings.map(t => `Retire in ${t} yrs`),
+      datasets: growthRates.map((g,i) => ({
+        label: `Rev Growth ${growthLabels[i]}`,
+        data: timings.map(yrs => {
+          const rev = rev0 * Math.pow(1+g, yrs);
+          const ten = tenure0 + yrs;
+          const pm = payoutMultiple(rev, ten);
+          return rev * 0.30 * pm;
+        }),
+        backgroundColor: ['rgba(255,107,107,0.6)','rgba(138,145,158,0.6)','rgba(201,168,76,0.6)','rgba(74,158,255,0.6)','rgba(61,220,151,0.6)'][i]
+      }))
+    },
+    options: opts
+  });
+}
+
+function renderBreakEvenChart(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate) {
+  destroyChart('breakeven');
+  const ctx = document.getElementById('chart-breakeven').getContext('2d');
+  if (!window._beData) return;
+  const { forgoneComp, annualIncremental } = window._beData;
+  const labels = ['Year 1','Year 2','Year 3','Year 4','Year 5'];
+  const cumIncremental = labels.map((_, i) => annualIncremental * (i+1));
+  const forgoneLine = labels.map(() => forgoneComp);
+  const opts = getChartDefaults();
+  charts['breakeven'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Cumulative Incremental Benefit', data: cumIncremental, borderColor: '#3ddc97', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.3 },
+        { label: 'Forgone Compensation', data: forgoneLine, borderColor: '#ff6b6b', borderWidth: 2, borderDash: [6,3], pointRadius: 0, fill: false }
+      ]
+    },
+    options: opts
+  });
+}
+
+// =============================================
+// UI CONTROLS
+// =============================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('fade-in');
+}
+
+function toggleTax() {
+  postTax = !postTax;
+  const track = document.getElementById('taxToggle');
+  const preLabel = document.getElementById('pretax-label');
+  const postLabel = document.getElementById('posttax-label');
+  track.classList.toggle('active', postTax);
+  preLabel.style.color = postTax ? 'var(--text-muted)' : 'var(--gold)';
+  postLabel.style.color = postTax ? 'var(--gold)' : 'var(--text-muted)';
+  calculate();
+}
+
+// =============================================
+// EXPORT
+// =============================================
+function exportCSV() {
+  const rows = [['PWM Retirement Planner — Export', new Date().toLocaleDateString()]];
+  rows.push([]);
+  rows.push(['INPUTS']);
+  rows.push(['Revenue', document.getElementById('revenue').value]);
+  rows.push(['Tenure', document.getElementById('tenure').value]);
+  rows.push(['Years Remaining', document.getElementById('yearsRemaining').value]);
+  rows.push(['Working Growth Rate', document.getElementById('workGrowth').value + '%']);
+  rows.push(['Retirement Growth Rate', document.getElementById('retGrowth').value + '%']);
+  rows.push(['GS Price', document.getElementById('gsPrice').value]);
+  rows.push(['Stock Growth Rate', document.getElementById('stockGrowth').value + '%']);
+  rows.push(['Working State', document.getElementById('workState').value]);
+  rows.push(['Retirement State', document.getElementById('retState').value]);
+  rows.push([]);
+
+  // Working table
+  const wtBody = document.getElementById('working-tbody');
+  if (wtBody) {
+    rows.push(['WORKING PHASE COMPENSATION']);
+    rows.push(['Year','Revenue','Base Comp','Grid Bonus','Grid Rate','Total Comp','Eff Rate','Deferral %','$ Deferred','Cash Comp','After-Tax Cash']);
+    wtBody.querySelectorAll('tr').forEach(tr => {
+      rows.push(Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim()));
+    });
+  }
+
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `PWM_Retirement_Planner_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function exportPDF() {
+  window.print();
+}
+
+// =============================================
+// PRINT STYLES
+// =============================================
+const printStyle = document.createElement('style');
+printStyle.textContent = `
+  @media print {
+    body { background: white !important; color: black !important; }
+    .sidebar { display: none !important; }
+    .header { position: static !important; background: white !important; border-bottom: 2px solid black !important; }
+    .tabs { display: none !important; }
+    .panel { display: block !important; }
+    .app { display: block !important; }
+    .main { padding: 0 !important; }
+    :root { --bg: white; --surface: #f8f8f8; --text: black; --text-dim: #333; --border: #ddd; --gold: #8a6000; --green: #006b3c; }
+  }
+`;
+document.head.appendChild(printStyle);
+
+// START
+init();
+</script>
+</body>
+</html>
