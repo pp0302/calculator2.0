@@ -32,6 +32,246 @@
     --font-body: 'DM Sans', sans-serif;
   }
 
+  body.light-mode {
+    --bg: #f4f1eb;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --surface3: #e8e4dc;
+    --border: #d4cfc5;
+    --border2: #c4bfb4;
+    --gold: #8a6000;
+    --gold-dim: #a07820;
+    --gold-bright: #6b4a00;
+    --text: #1a1a1a;
+    --text-dim: #444444;
+    --text-muted: #888880;
+    --green: #1a6644;
+    --green-dim: #c8ead8;
+    --blue: #1a3a8a;
+    --blue-dim: #d0daf5;
+    --red: #8a1a1a;
+    --red-dim: #f5d0d0;
+  }
+
+  /* THEME TOGGLE BUTTON */
+  .theme-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .theme-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+  /* =============================================
+     PRINT / PDF STYLES
+     ============================================= */
+  @media print {
+    /* Page setup */
+    @page {
+      size: A4 landscape;
+      margin: 15mm 12mm 15mm 12mm;
+    }
+    @page :first {
+      margin-top: 10mm;
+    }
+
+    /* Reset layout for print */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    body {
+      background: #ffffff !important;
+      color: #1a1a1a !important;
+      font-size: 10px !important;
+      font-family: 'DM Sans', sans-serif !important;
+    }
+
+    /* Hide interactive chrome */
+    .sidebar { display: none !important; }
+    .tabs { display: none !important; }
+    .header-right { display: none !important; }
+    .flag { display: none !important; }
+
+    /* Header — clean letterhead style */
+    .header {
+      position: static !important;
+      background: #ffffff !important;
+      border-bottom: 2px solid #8a6000 !important;
+      padding: 0 0 8px 0 !important;
+      height: auto !important;
+      margin-bottom: 16px !important;
+      display: flex !important;
+      align-items: flex-end !important;
+      justify-content: space-between !important;
+    }
+    .logo {
+      font-size: 20px !important;
+      color: #8a6000 !important;
+    }
+    .logo span { color: #444444 !important; }
+    .header-tag {
+      border-color: #c4bfb4 !important;
+      color: #888880 !important;
+      font-size: 9px !important;
+    }
+
+    /* Print date in header */
+    .header::after {
+      content: 'Generated ' attr(data-print-date);
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      color: #888880;
+      align-self: flex-end;
+      padding-bottom: 2px;
+    }
+
+    /* App layout — full width */
+    .app {
+      display: block !important;
+      height: auto !important;
+    }
+    .main {
+      padding: 0 !important;
+      overflow: visible !important;
+      height: auto !important;
+    }
+
+    /* Show all panels */
+    .panel {
+      display: block !important;
+      page-break-before: always;
+    }
+    .panel:first-of-type { page-break-before: avoid; }
+
+    /* Panel section headers */
+    .section-header { margin-top: 16px !important; margin-bottom: 8px !important; }
+    .section-title {
+      font-size: 14px !important;
+      color: #1a1a1a !important;
+      border-bottom: 1px solid #d4cfc5;
+      padding-bottom: 4px;
+      width: 100%;
+    }
+    .section-divider { display: none !important; }
+
+    /* KPI cards */
+    .kpi-grid {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 8px !important;
+      margin-bottom: 16px !important;
+    }
+    .kpi-card {
+      background: #f0ede6 !important;
+      border: 1px solid #d4cfc5 !important;
+      padding: 10px 12px !important;
+    }
+    .kpi-card::before { background: linear-gradient(90deg, #8a6000, transparent) !important; }
+    .kpi-value { font-size: 18px !important; color: #8a6000 !important; }
+    .kpi-label, .kpi-sub { color: #888880 !important; }
+    .kpi-card.green .kpi-value { color: #1a6644 !important; }
+    .kpi-card.blue .kpi-value { color: #1a3a8a !important; }
+
+    /* Multiple cards */
+    .multiple-display {
+      display: flex !important;
+      gap: 8px !important;
+      margin-bottom: 12px !important;
+    }
+    .multiple-card {
+      background: #f0ede6 !important;
+      border: 1px solid #d4cfc5 !important;
+    }
+    .multiple-value { color: #8a6000 !important; font-size: 20px !important; }
+    .multiple-value.max { color: #1a6644 !important; }
+    .multiple-label, .kpi-sub { color: #888880 !important; }
+
+    /* Charts */
+    .chart-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 12px !important;
+      margin-bottom: 16px !important;
+    }
+    .chart-grid.single { grid-template-columns: 1fr !important; }
+    .chart-card {
+      background: #f8f7f4 !important;
+      border: 1px solid #d4cfc5 !important;
+      padding: 12px !important;
+      page-break-inside: avoid;
+    }
+    .chart-title { color: #888880 !important; font-size: 8px !important; }
+    .chart-container { height: 180px !important; }
+
+    /* Tables */
+    .table-wrap {
+      background: #ffffff !important;
+      border: 1px solid #d4cfc5 !important;
+      margin-bottom: 12px !important;
+      page-break-inside: avoid;
+    }
+    table { font-size: 9px !important; }
+    thead tr { background: #f0ede6 !important; }
+    th {
+      color: #888880 !important;
+      padding: 6px 8px !important;
+      font-size: 8px !important;
+    }
+    td {
+      color: #444444 !important;
+      padding: 5px 8px !important;
+      border-bottom: 1px solid #e8e4dc !important;
+    }
+    td:first-child { color: #1a1a1a !important; }
+    tr.total-row { background: #f0ede6 !important; }
+    tr.total-row td { color: #8a6000 !important; }
+    tr.retirement-row { background: rgba(26,102,68,0.04) !important; }
+    tr.retirement-row td:first-child { color: #1a6644 !important; }
+    tr.cliff-row { background: rgba(138,26,26,0.05) !important; }
+    tr.cliff-row td { color: #8a1a1a !important; }
+    .positive { color: #1a6644 !important; }
+    .negative { color: #8a1a1a !important; }
+    .gold { color: #8a6000 !important; }
+    .green { color: #1a6644 !important; }
+    .dim { color: #888880 !important; }
+
+    /* Sensitivity tables */
+    .sens-table th { background: #f0ede6 !important; color: #888880 !important; font-size: 8px !important; }
+    .sens-table td { font-size: 9px !important; }
+    .sens-high { background: rgba(26,102,68,0.08) !important; color: #1a6644 !important; }
+    .sens-mid { background: rgba(138,96,0,0.06) !important; color: #8a6000 !important; }
+    .sens-low { background: rgba(138,26,26,0.06) !important; color: #8a1a1a !important; }
+
+    /* Scenario section headers get their own page */
+    #panel-scenarios .section-header { page-break-before: always; }
+    #panel-scenarios .section-header:first-child { page-break-before: avoid; }
+
+    /* Input summary block — printed at top of first page */
+    .print-inputs-summary {
+      display: block !important;
+      background: #f0ede6 !important;
+      border: 1px solid #d4cfc5 !important;
+      border-left: 3px solid #8a6000 !important;
+      padding: 10px 14px !important;
+      margin-bottom: 16px !important;
+      font-family: 'DM Mono', monospace !important;
+      font-size: 9px !important;
+      color: #444444 !important;
+      column-count: 3 !important;
+      column-gap: 20px !important;
+    }
+    .print-inputs-summary span { display: block; margin-bottom: 3px; }
+    .print-inputs-summary strong { color: #8a6000; }
+  }
+
+  /* Hide print summary in screen view */
+  .print-inputs-summary { display: none; }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -547,8 +787,12 @@
     <button class="btn btn-gold" onclick="exportPDF()">↓ PDF</button>
     <button class="btn" onclick="saveInputs()" id="saveBtn">⬆ Save Inputs</button>
     <button class="btn" onclick="restoreInputs()" id="restoreBtn" style="display:none">↺ Restore Saved</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀ Light</button>
   </div>
 </header>
+
+<!-- PRINT-ONLY INPUTS SUMMARY -->
+<div class="print-inputs-summary" id="print-inputs-summary"></div>
 
 <div class="app">
 
@@ -2139,26 +2383,58 @@ function exportCSV() {
 }
 
 function exportPDF() {
+  // Set print date on header
+  document.querySelector('.header').setAttribute('data-print-date', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+
+  // Populate print inputs summary
+  const rev = (+document.getElementById('revenue').value).toLocaleString('en-US');
+  const tenure = document.getElementById('tenure').value;
+  const yrs = document.getElementById('yearsRemaining').value;
+  const wGrowth = document.getElementById('workGrowth').value;
+  const rGrowth = document.getElementById('retGrowth').value;
+  const gsP = document.getElementById('gsPrice').value;
+  const sGrowth = document.getElementById('stockGrowth').value;
+  const workSt = document.getElementById('workState').value;
+  const retSt = document.getElementById('retState').value;
+  const altSt = document.getElementById('altState').value;
+  const curDeliv = (+document.getElementById('currentYearDelivery').value || 0).toLocaleString('en-US');
+  const taxMode = postTax ? 'Post-Tax' : 'Pre-Tax';
+
+  document.getElementById('print-inputs-summary').innerHTML = `
+    <span><strong>Revenue:</strong> $${rev}</span>
+    <span><strong>Tenure:</strong> ${tenure} years</span>
+    <span><strong>Years to Retirement:</strong> ${yrs}</span>
+    <span><strong>Working Growth:</strong> ${wGrowth}%</span>
+    <span><strong>Retirement Growth:</strong> ${rGrowth}%</span>
+    <span><strong>GS Price:</strong> $${gsP}</span>
+    <span><strong>Stock Growth:</strong> ${sGrowth}%</span>
+    <span><strong>Working State:</strong> ${workSt}</span>
+    <span><strong>Retirement State:</strong> ${retSt}</span>
+    <span><strong>Alt. State:</strong> ${altSt}</span>
+    <span><strong>2026 Delivery:</strong> $${curDeliv}</span>
+    <span><strong>Tax View:</strong> ${taxMode}</span>
+  `;
+
   window.print();
 }
 
 // =============================================
-// PRINT STYLES
+// THEME TOGGLE
 // =============================================
-const printStyle = document.createElement('style');
-printStyle.textContent = `
-  @media print {
-    body { background: white !important; color: black !important; }
-    .sidebar { display: none !important; }
-    .header { position: static !important; background: white !important; border-bottom: 2px solid black !important; }
-    .tabs { display: none !important; }
-    .panel { display: block !important; }
-    .app { display: block !important; }
-    .main { padding: 0 !important; }
-    :root { --bg: white; --surface: #f8f8f8; --text: black; --text-dim: #333; --border: #ddd; --gold: #8a6000; --green: #006b3c; }
-  }
-`;
-document.head.appendChild(printStyle);
+let lightMode = false;
+
+function toggleTheme() {
+  lightMode = !lightMode;
+  document.body.classList.toggle('light-mode', lightMode);
+  const btn = document.getElementById('themeBtn');
+  btn.textContent = lightMode ? '☾ Dark' : '☀ Light';
+  // Redraw charts with new colors
+  calculate();
+}
+
+// =============================================
+// PRINT STYLES (legacy — replaced by @media print in CSS)
+// =============================================
 
 // START
 init();
