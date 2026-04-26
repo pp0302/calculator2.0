@@ -9,30 +9,6 @@
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
 
   :root {
-    --bg: #0a0c0f;
-    --surface: #111318;
-    --surface2: #181c22;
-    --surface3: #1e232b;
-    --border: #252b35;
-    --border2: #2e3540;
-    --gold: #c9a84c;
-    --gold-dim: #8a6f32;
-    --gold-bright: #e8c870;
-    --text: #e8eaed;
-    --text-dim: #8a919e;
-    --text-muted: #4a5260;
-    --green: #3ddc97;
-    --green-dim: #1a6644;
-    --blue: #4a9eff;
-    --blue-dim: #1a3a6e;
-    --red: #ff6b6b;
-    --red-dim: #6e1a1a;
-    --font-display: 'Cormorant Garamond', serif;
-    --font-mono: 'DM Mono', monospace;
-    --font-body: 'DM Sans', sans-serif;
-  }
-
-  body.light-mode {
     --bg: #f4f1eb;
     --surface: #ffffff;
     --surface2: #f0ede6;
@@ -51,22 +27,10 @@
     --blue-dim: #d0daf5;
     --red: #8a1a1a;
     --red-dim: #f5d0d0;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
   }
-
-  /* THEME TOGGLE BUTTON */
-  .theme-btn {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    padding: 5px 10px;
-    border-radius: 2px;
-    cursor: pointer;
-    border: 1px solid var(--border2);
-    background: transparent;
-    color: var(--text-dim);
-    transition: all 0.15s;
-    letter-spacing: 0.04em;
-  }
-  .theme-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
 
   /* =============================================
      PRINT / PDF STYLES
@@ -776,7 +740,7 @@
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
-<body class="light-mode">
+<body>
 
 <!-- HEADER -->
 <header class="header">
@@ -797,7 +761,6 @@
     <button class="btn btn-gold" onclick="exportPDF()">↓ PDF</button>
     <button class="btn" onclick="saveInputs()" id="saveBtn">⬆ Save Inputs</button>
     <button class="btn" onclick="restoreInputs()" id="restoreBtn" style="display:none">↺ Restore Saved</button>
-    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☾ Dark</button>
   </div>
 </header>
 
@@ -2256,18 +2219,6 @@ function exportPDF() {
 }
 
 // =============================================
-// THEME TOGGLE
-// =============================================
-let lightMode = true;
-
-function toggleTheme() {
-  lightMode = !lightMode;
-  document.body.classList.toggle('light-mode', lightMode);
-  const btn = document.getElementById('themeBtn');
-  btn.textContent = lightMode ? '☾ Dark' : '☀ Light';
-  // Redraw charts with new colors
-  calculate();
-}
 
 init();
 </script>
