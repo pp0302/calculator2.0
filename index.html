@@ -166,6 +166,12 @@
       gap: 8px !important;
       margin-bottom: 16px !important;
     }
+    .comp-summary {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 8px !important;
+      margin-bottom: 16px !important;
+    }
     .kpi-card {
       background: #f0ede6 !important;
       border: 1px solid #d4cfc5 !important;
@@ -753,6 +759,9 @@
     .chart-grid { grid-template-columns: 1fr; }
   }
 
+  /* COMP SUMMARY */
+  .comp-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+
   .spinner {
     display: inline-block;
     width: 8px; height: 8px;
@@ -767,7 +776,7 @@
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
-<body>
+<body class="light-mode">
 
 <!-- HEADER -->
 <header class="header">
@@ -787,7 +796,7 @@
     <button class="btn btn-gold" onclick="exportPDF()">↓ PDF</button>
     <button class="btn" onclick="saveInputs()" id="saveBtn">⬆ Save Inputs</button>
     <button class="btn" onclick="restoreInputs()" id="restoreBtn" style="display:none">↺ Restore Saved</button>
-    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀ Light</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☾ Dark</button>
   </div>
 </header>
 
@@ -944,6 +953,12 @@
     <div id="panel-overview" class="panel active fade-in">
 
       <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="section-header">
+        <div class="section-title">Compensation Summary</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="comp-summary" id="comp-summary"></div>
 
       <div class="section-header">
         <div class="section-title">Income Timeline</div>
@@ -1111,16 +1126,6 @@
       </div>
       <div class="flag info"><span class="flag-icon">ℹ</span><span>Total 5-year PWM benefit across retirement timing × revenue growth combinations. Payout multiple shown in each cell. All other inputs held constant.</span></div>
       <div class="sens-grid" id="timing-grid"></div>
-      <div class="chart-grid">
-        <div class="chart-card">
-          <div class="chart-title">Total 5-Year Benefit by Retirement Timing</div>
-          <div class="chart-container"><canvas id="chart-timing"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-title">Payout Multiple by Timing × Revenue Growth</div>
-          <div class="chart-container"><canvas id="chart-multiple-sens"></canvas></div>
-        </div>
-      </div>
 
       <!-- 5.3 Domicile -->
       <div class="section-header" style="margin-top:8px">
@@ -1143,12 +1148,6 @@
           <tbody id="domicile-tbody"></tbody>
         </table>
       </div>
-      <div class="chart-grid single">
-        <div class="chart-card">
-          <div class="chart-title">After-Tax Retirement Income — State Comparison</div>
-          <div class="chart-container"><canvas id="chart-domicile"></canvas></div>
-        </div>
-      </div>
 
       <!-- 5.4 Stress Test -->
       <div class="section-header" style="margin-top:8px">
@@ -1164,26 +1163,6 @@
         </div>
       </div>
 
-      <!-- 5.5 Cliff -->
-      <div class="section-header" style="margin-top:8px">
-        <div class="section-title">5.5 — The $5M Compensation Cliff</div>
-        <div class="section-divider"></div>
-      </div>
-      <div id="cliff-section"></div>
-
-      <!-- 5.6 Break-Even -->
-      <div class="section-header" style="margin-top:8px">
-        <div class="section-title">5.6 — Break-Even Analysis: One More Year</div>
-        <div class="section-divider"></div>
-      </div>
-      <div class="flag info"><span class="flag-icon">ℹ</span><span>At what point does the incremental PWM benefit from working one additional year exceed the forgone compensation from that extra year?</span></div>
-      <div class="table-wrap" id="breakeven-wrap"></div>
-      <div class="chart-grid single">
-        <div class="chart-card">
-          <div class="chart-title">Cumulative Incremental PWM Benefit vs. Forgone Compensation</div>
-          <div class="chart-container"><canvas id="chart-breakeven"></canvas></div>
-        </div>
-      </div>
 
     </div>
   </main>
@@ -1341,7 +1320,6 @@ function updatePriceStatus() {
 // =============================================
 // DISPLAY UPDATES
 // =============================================
-function updateRevDisplay() {} // no-op, kept for safety
 function updateRevFormatted() {
   const val = +document.getElementById('revenue').value;
   document.getElementById('rev-formatted').textContent = val ? '$' + val.toLocaleString('en-US') : '';
@@ -1352,7 +1330,6 @@ function updateTenureDisplay() {
   const el = document.getElementById('tenure-at-ret-display');
   if (el) el.textContent = `→ ${t + yr} at retirement`;
 }
-function updateYrsDisplay() {} // no-op
 function updateWGrowth() {
   document.getElementById('wgrowth-display').textContent = `${(+document.getElementById('workGrowth').value).toFixed(1)}%`;
 }
@@ -1724,6 +1701,7 @@ function calculate() {
 
   // ---- RENDER ----
   renderKPIs(workingYears, year1Benefit, totalBenefitPool, pm, revAtRetirement, tenureAtRetirement);
+  renderCompSummary(workingYears, waterfall, workStateRate);
   renderMultiple(sm, tm, pm, 'multiple-display');
   renderMultiple(sm, tm, pm, 'ret-multiple-display');
   renderWorkingTable(workingYears, workStateRate);
@@ -1733,8 +1711,6 @@ function calculate() {
   renderWaterfallTable(waterfall);
   renderDomicileTable(waterfall, retStateRate, altStateRate);
   renderStressTest(year1Benefit);
-  renderCliff(workingYears, workStateRate);
-  renderBreakEven(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate);
   renderTimingSensitivity(rev0, tenure0, yrsRemaining, rGrowth);
   renderFlags(workingYears, revAtRetirement, tenureAtRetirement);
 
@@ -1742,15 +1718,31 @@ function calculate() {
   renderStackedChart(workingYears, retBenefits, tailByRetYear, grantSchedule, existingDeliveries, currentYearDelivery, retirementCalYear, workStateRate, retStateRate);
   renderCumulativeChart(cumulativeData);
   renderWaterfallChart(waterfall);
-  renderDomicileChart(waterfall, retStateRate, altStateRate);
   renderStressChart(year1Benefit);
-  renderTimingChart(rev0, tenure0, yrsRemaining, rGrowth);
-  renderBreakEvenChart(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate);
 }
 
 // =============================================
 // RENDER FUNCTIONS
 // =============================================
+function renderCompSummary(workingYears, waterfall, workStateRate) {
+  const workTotal   = workingYears.reduce((s,w) => s + w.total, 0);
+  const workTotalAT = workingYears.reduce((s,w) => s + applyTax(w.total, workStateRate), 0);
+  const retTotal    = waterfall.reduce((s,w) => s + w.totalFlat, 0);
+  const retTotalAT  = waterfall.reduce((s,w) => s + w.totalFlatAT, 0);
+  const grand = workTotal + retTotal;
+  const grandAT = workTotalAT + retTotalAT;
+  const yrs = workingYears.length;
+  const show = postTax;
+  const el = document.getElementById('comp-summary');
+  el.innerHTML = [
+    { cls:'blue',  label:'Total Comp — Working Phase',    val: show ? workTotalAT : workTotal,  sub: (show?'after-tax':'pre-tax')+' · '+yrs+' year'+(yrs!==1?'s':'') },
+    { cls:'green', label:'Total Comp — Retirement Phase', val: show ? retTotalAT  : retTotal,   sub: (show?'after-tax':'pre-tax')+' · PWM benefit + def comp tail' },
+    { cls:'',      label:'Grand Total — Full Period',     val: show ? grandAT     : grand,      sub: (show?'after-tax':'pre-tax')+' · working + retirement' }
+  ].map(c =>
+    '<div class="kpi-card '+c.cls+'"><div class="kpi-label">'+c.label+'</div><div class="kpi-value">'+fmt(c.val)+'</div><div class="kpi-sub">'+c.sub+'</div></div>'
+  ).join('');
+}
+
 function renderKPIs(workingYears, year1Benefit, totalBenefitPool, pm, revAtRetirement, tenureAtRetirement) {
   const lastWY = workingYears[workingYears.length - 1];
   const kpis = [
@@ -1979,77 +1971,6 @@ function renderStressTest(year1Benefit) {
   document.getElementById('stress-wrap').innerHTML = html;
 }
 
-function renderCliff(workingYears, workStateRate) {
-  const cliffYear = workingYears.findIndex((w, i) => i > 0 && workingYears[i-1].deferralRate === 0.36 && w.deferralRate === 0.50);
-  const el = document.getElementById('cliff-section');
-  if (workingYears.length === 0) { el.innerHTML = ''; return; }
-  if (workingYears[0].deferralRate === 0.50) {
-    el.innerHTML = `<div class="flag warning"><span class="flag-icon">⚡</span><span>Current compensation is already above $5,000,000 — 50% deferral rate applies throughout the working phase.</span></div>`;
-    return;
-  }
-  if (cliffYear === -1) {
-    const maxComp = workingYears[workingYears.length-1].total;
-    el.innerHTML = `<div class="flag info"><span class="flag-icon">ℹ</span><span>Projected compensation does not cross the $5M cliff within the ${workingYears.length}-year working phase. Max projected comp: ${fmtFull(maxComp)}. 36% deferral applies throughout.</span></div>`;
-    return;
-  }
-  const before = workingYears[cliffYear - 1];
-  const cliff = workingYears[cliffYear];
-  const after = cliffYear + 1 < workingYears.length ? workingYears[cliffYear + 1] : null;
-  let html = `<div class="flag warning"><span class="flag-icon">⚡</span><span>Compensation crosses $5M in <strong>Year ${cliff.year}</strong>. Deferral rate steps from 36% → 50%. Cash compensation decreases ${fmtFull(before.cash - cliff.cash)} in this year despite higher total comp.</span></div>`;
-  html += `<div class="table-wrap"><table><thead><tr><th>Year</th><th>Total Comp</th><th>Deferral Rate</th><th>$ Deferred</th><th>Cash Comp</th><th>YoY Cash Change</th></tr></thead><tbody>`;
-  const rows = [before, cliff, after].filter(Boolean);
-  rows.forEach((w, i) => {
-    const prev = i > 0 ? rows[i-1] : null;
-    const cashChg = prev ? w.cash - prev.cash : null;
-    const isCliffRow = w === cliff;
-    html += `<tr class="${isCliffRow ? 'cliff-row' : ''}">
-      <td>Year ${w.year}${isCliffRow ? ' ▲ CLIFF' : ''}</td>
-      <td>${fmtFull(w.total)}</td>
-      <td class="${isCliffRow ? 'negative' : ''}">${(w.deferralRate*100).toFixed(0)}%</td>
-      <td>${fmtFull(w.deferred)}</td>
-      <td>${fmtFull(w.cash)}</td>
-      <td class="${cashChg != null ? (cashChg >= 0 ? 'positive' : 'negative') : ''}">${cashChg != null ? (cashChg >= 0 ? '+' : '') + fmtFull(cashChg) : '—'}</td>
-    </tr>`;
-  });
-  html += '</tbody></table></div>';
-  document.getElementById('cliff-section').innerHTML = html;
-}
-
-function renderBreakEven(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate) {
-  // Benefit if retire now vs. one year later
-  const revNow = rev0 * Math.pow(1 + wGrowth, yrsRemaining - 1);
-  const tenNow = tenure0 + yrsRemaining;
-  const pmNow = payoutMultiple(revNow, tenNow);
-  const benefit1 = revNow * 0.30 * pmNow / BENEFIT_PERIOD;
-  const totalNow = benefit1 * BENEFIT_PERIOD;
-
-  const revLater = revNow * (1 + wGrowth);
-  const tenLater = tenNow + 1;
-  const pmLater = payoutMultiple(revLater, tenLater);
-  const benefit1Later = revLater * 0.30 * pmLater / BENEFIT_PERIOD;
-  const totalLater = benefit1Later * BENEFIT_PERIOD;
-
-  const incBenefit = totalLater - totalNow;
-  const compLater = totalComp(revLater);
-  const drLater = defRate(compLater.total);
-  const forgoneComp = compLater.total; // full year of comp forgone
-  const forCash = forgoneComp * (1 - drLater);
-
-  // Break-even: how many years of incremental benefit to recoup forgone comp
-  // Incremental annual benefit from extra year = (benefit1Later - benefit1)
-  const annualIncremental = benefit1Later - benefit1;
-
-  const html = `<div class="table-wrap"><table><thead>
-    <tr><th>Scenario</th><th>Forgone Comp (1 Yr)</th><th>Incremental PWM Benefit</th><th>Net Benefit of Waiting</th><th>Annual Incremental Benefit</th><th>Implied Break-Even</th></tr>
-  </thead><tbody>
-    <tr><td>Pre-Tax</td><td class="negative">${fmtFull(forgoneComp)}</td><td class="positive">${fmtFull(incBenefit)}</td><td class="${incBenefit > forgoneComp ? 'positive' : 'negative'}">${fmtFull(incBenefit - forgoneComp)}</td><td>${fmtFull(annualIncremental)}</td><td>${annualIncremental > 0 ? (forgoneComp / annualIncremental).toFixed(1) + ' yrs' : 'N/A'}</td></tr>
-    <tr><td>Post-Tax (ret. state)</td><td class="negative">${fmtFull(forCash * (1 - FED_ORDINARY - workStateRate))}</td><td class="positive">${fmtFull(incBenefit * (1 - FED_ORDINARY - retStateRate))}</td><td class="${incBenefit > forgoneComp ? 'positive' : 'negative'}">${fmtFull(incBenefit*(1-FED_ORDINARY-retStateRate) - forCash*(1-FED_ORDINARY-workStateRate))}</td><td>${fmtFull(annualIncremental*(1-FED_ORDINARY-retStateRate))}</td><td>${annualIncremental > 0 ? (forCash*(1-FED_ORDINARY-workStateRate) / (annualIncremental*(1-FED_ORDINARY-retStateRate))).toFixed(1) + ' yrs' : 'N/A'}</td></tr>
-  </tbody></table></div>`;
-  document.getElementById('breakeven-wrap').innerHTML = html;
-
-  // Store for chart
-  window._beData = { forgoneComp, annualIncremental, totalLater, totalNow };
-}
 
 function renderTimingSensitivity(rev0, tenure0, yrsRemaining, rGrowth) {
   const timings = [3, 5, 7, 10].filter(t => t <= 20);
@@ -2215,24 +2136,6 @@ function renderWaterfallChart(waterfall) {
   });
 }
 
-function renderDomicileChart(waterfall, retStateRate, altStateRate) {
-  destroyChart('domicile');
-  const ctx = document.getElementById('chart-domicile').getContext('2d');
-  const opts = getChartDefaults();
-  const retStateName = document.getElementById('retState').value;
-  const altStateName = document.getElementById('altState').value;
-  charts['domicile'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: waterfall.map(w => `Year ${w.year}`),
-      datasets: [
-        { label: retStateName, data: waterfall.map(w => w.flat*(1-FED_ORDINARY-retStateRate)+w.tail*(1-retStateRate)), backgroundColor: 'rgba(74,158,255,0.5)' },
-        { label: altStateName, data: waterfall.map(w => w.flat*(1-FED_ORDINARY-altStateRate)+w.tail*(1-altStateRate)), backgroundColor: 'rgba(61,220,151,0.5)' }
-      ]
-    },
-    options: opts
-  });
-}
 
 function renderStressChart(year1Benefit) {
   destroyChart('stress');
@@ -2256,73 +2159,7 @@ function renderStressChart(year1Benefit) {
   });
 }
 
-function renderTimingChart(rev0, tenure0, yrsRemaining, rGrowth) {
-  destroyChart('timing');
-  const ctx = document.getElementById('chart-timing').getContext('2d');
-  const timings = [3, 5, 7, 10].filter(t => t <= 20);
-  const growthRates = [0, 0.03, 0.05, 0.08, 0.10];
-  const growthLabels = ['0%','+3%','+5%','+8%','+10%'];
-  const colors = ['#ff6b6b','#8a919e','#c9a84c','#4a9eff','#3ddc97'];
-  const opts = getChartDefaults();
-  charts['timing'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: timings.map(t => `Retire in ${t} yrs`),
-      datasets: growthRates.map((g,i) => ({
-        label: `Rev Growth ${growthLabels[i]}`,
-        data: timings.map(yrs => {
-          const rev = rev0 * Math.pow(1+g, yrs);
-          const ten = tenure0 + yrs;
-          const pm = payoutMultiple(rev, ten);
-          return rev * 0.30 * pm;
-        }),
-        backgroundColor: colors[i].replace(')', ',0.6)').replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', '#').startsWith('#') ? colors[i] + '99' : colors[i]
-      }))
-    },
-    options: opts
-  });
-  // Rebuild datasets properly
-  destroyChart('timing');
-  charts['timing'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: timings.map(t => `Retire in ${t} yrs`),
-      datasets: growthRates.map((g,i) => ({
-        label: `Rev Growth ${growthLabels[i]}`,
-        data: timings.map(yrs => {
-          const rev = rev0 * Math.pow(1+g, yrs);
-          const ten = tenure0 + yrs;
-          const pm = payoutMultiple(rev, ten);
-          return rev * 0.30 * pm;
-        }),
-        backgroundColor: ['rgba(255,107,107,0.6)','rgba(138,145,158,0.6)','rgba(201,168,76,0.6)','rgba(74,158,255,0.6)','rgba(61,220,151,0.6)'][i]
-      }))
-    },
-    options: opts
-  });
-}
 
-function renderBreakEvenChart(rev0, tenure0, yrsRemaining, wGrowth, rGrowth, workStateRate, retStateRate) {
-  destroyChart('breakeven');
-  const ctx = document.getElementById('chart-breakeven').getContext('2d');
-  if (!window._beData) return;
-  const { forgoneComp, annualIncremental } = window._beData;
-  const labels = ['Year 1','Year 2','Year 3','Year 4','Year 5'];
-  const cumIncremental = labels.map((_, i) => annualIncremental * (i+1));
-  const forgoneLine = labels.map(() => forgoneComp);
-  const opts = getChartDefaults();
-  charts['breakeven'] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Cumulative Incremental Benefit', data: cumIncremental, borderColor: '#3ddc97', borderWidth: 2, pointRadius: 3, fill: false, tension: 0.3 },
-        { label: 'Forgone Compensation', data: forgoneLine, borderColor: '#ff6b6b', borderWidth: 2, borderDash: [6,3], pointRadius: 0, fill: false }
-      ]
-    },
-    options: opts
-  });
-}
 
 // =============================================
 // UI CONTROLS
@@ -2421,7 +2258,7 @@ function exportPDF() {
 // =============================================
 // THEME TOGGLE
 // =============================================
-let lightMode = false;
+let lightMode = true;
 
 function toggleTheme() {
   lightMode = !lightMode;
@@ -2432,11 +2269,6 @@ function toggleTheme() {
   calculate();
 }
 
-// =============================================
-// PRINT STYLES (legacy — replaced by @media print in CSS)
-// =============================================
-
-// START
 init();
 </script>
 </body>
