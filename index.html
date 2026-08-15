@@ -747,7 +747,7 @@
   <div class="header-left">
     <div class="logo">PWM <span>Retirement Planner</span></div>
     <div class="header-tag">Goldman Sachs · 2026</div>
-    <div class="header-tag">Updated Apr 26, 2026</div>
+    <div class="header-tag" id="commit-date-tag">Updated …</div>
   </div>
   <div class="header-right">
     <div class="tax-toggle">
@@ -1187,6 +1187,7 @@ let charts = {};
 function init() {
   populateStateSelects();
   fetchGSPrice();
+  fetchCommitDate();
   updateRevFormatted();
   checkSavedInputs();
   calculate();
@@ -1259,11 +1260,28 @@ async function fetchGSPrice() {
   try {
     const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GS?interval=1d&range=1d');
     const data = await res.json();
-    const price = data.chart.result[0].meta.regularMarketPrice;
+    const meta = data.chart.result[0].meta;
+    const price = meta.regularMarketPrice;
     if (price && !gsPriceManual) {
       priceEl.value = price.toFixed(2);
-      statusEl.textContent = 'LIVE';
-      statusEl.className = 'price-status live';
+      const marketState = meta.marketState || '';
+      const priceTime = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000) : null;
+      const isLive = marketState === 'REGULAR';
+      let label, asOf = '';
+      if (priceTime) {
+        asOf = priceTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+      }
+      if (isLive) {
+        label = asOf ? `LIVE ${asOf}` : 'LIVE';
+        statusEl.className = 'price-status live';
+      } else {
+        const closeDate = priceTime
+          ? priceTime.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' })
+          : '';
+        label = closeDate ? `CLOSE ${closeDate}` : 'CLOSE';
+        statusEl.className = 'price-status manual';
+      }
+      statusEl.textContent = label;
       calculate();
     }
   } catch(e) {
@@ -1273,6 +1291,19 @@ async function fetchGSPrice() {
     priceEl.value = 900;
     calculate();
   }
+}
+
+async function fetchCommitDate() {
+  try {
+    const res = await fetch('https://api.github.com/repos/pp0302/calculator2.0/commits/main');
+    const data = await res.json();
+    const dateStr = data.commit?.committer?.date || data.commit?.author?.date;
+    if (dateStr) {
+      const d = new Date(dateStr);
+      const label = 'Updated ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById('commit-date-tag').textContent = label;
+    }
+  } catch(e) { /* leave placeholder */ }
 }
 
 function updatePriceStatus() {
