@@ -1257,31 +1257,21 @@ async function fetchGSPrice() {
   statusEl.className = 'price-status manual';
   priceEl.placeholder = 'Fetching…';
 
-  const yfUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/GS?interval=1d&range=1d';
   try {
-    let data;
-    try {
-      const res = await fetch(yfUrl);
-      data = await res.json();
-    } catch(e) {
-      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(yfUrl));
-      data = await res.json();
-    }
-    const meta = data.chart.result[0].meta;
-    const price = meta.regularMarketPrice;
+    const res = await fetch('https://finnhub.io/api/v1/quote?symbol=GS&token=da09jb9r01qh1nombfkgda09jb9r01qh1nombfl0');
+    const data = await res.json();
+    const price = data.c;
     if (price && !gsPriceManual) {
       priceEl.value = price.toFixed(2);
-      const isLive = (meta.marketState || '') === 'REGULAR';
-      const priceTime = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000) : null;
-      let label;
-      if (priceTime) {
-        const asOf = priceTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
-        const closeDate = priceTime.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' });
-        label = isLive ? `LIVE ${asOf} ET` : `CLOSE ${closeDate}`;
-      } else {
-        label = isLive ? 'LIVE' : 'CLOSE';
-      }
-      statusEl.textContent = label;
+      // Infer market state from current ET time (no holiday awareness, but sufficient)
+      const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const day = etNow.getDay();
+      const minOfDay = etNow.getHours() * 60 + etNow.getMinutes();
+      const isLive = day >= 1 && day <= 5 && minOfDay >= 570 && minOfDay < 960; // 9:30–16:00 ET
+      const priceTime = new Date((data.t || Date.now() / 1000) * 1000);
+      const asOf = priceTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+      const closeDate = priceTime.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' });
+      statusEl.textContent = isLive ? `LIVE ${asOf} ET` : `CLOSE ${closeDate}`;
       statusEl.className = isLive ? 'price-status live' : 'price-status manual';
       calculate();
     }
