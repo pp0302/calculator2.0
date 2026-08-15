@@ -1257,31 +1257,32 @@ async function fetchGSPrice() {
   statusEl.className = 'price-status manual';
   priceEl.placeholder = 'Fetching…';
 
+  const yfUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/GS?interval=1d&range=1d';
   try {
-    const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GS?interval=1d&range=1d');
-    const data = await res.json();
+    let data;
+    try {
+      const res = await fetch(yfUrl);
+      data = await res.json();
+    } catch(e) {
+      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(yfUrl));
+      data = await res.json();
+    }
     const meta = data.chart.result[0].meta;
     const price = meta.regularMarketPrice;
     if (price && !gsPriceManual) {
       priceEl.value = price.toFixed(2);
-      const marketState = meta.marketState || '';
+      const isLive = (meta.marketState || '') === 'REGULAR';
       const priceTime = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000) : null;
-      const isLive = marketState === 'REGULAR';
-      let label, asOf = '';
+      let label;
       if (priceTime) {
-        asOf = priceTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
-      }
-      if (isLive) {
-        label = asOf ? `LIVE ${asOf}` : 'LIVE';
-        statusEl.className = 'price-status live';
+        const asOf = priceTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+        const closeDate = priceTime.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' });
+        label = isLive ? `LIVE ${asOf} ET` : `CLOSE ${closeDate}`;
       } else {
-        const closeDate = priceTime
-          ? priceTime.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' })
-          : '';
-        label = closeDate ? `CLOSE ${closeDate}` : 'CLOSE';
-        statusEl.className = 'price-status manual';
+        label = isLive ? 'LIVE' : 'CLOSE';
       }
       statusEl.textContent = label;
+      statusEl.className = isLive ? 'price-status live' : 'price-status manual';
       calculate();
     }
   } catch(e) {
@@ -1300,7 +1301,7 @@ async function fetchCommitDate() {
     const dateStr = data.commit?.committer?.date || data.commit?.author?.date;
     if (dateStr) {
       const d = new Date(dateStr);
-      const label = 'Updated ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const label = 'Updated ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       document.getElementById('commit-date-tag').textContent = label;
     }
   } catch(e) { /* leave placeholder */ }
